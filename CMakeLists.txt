@@ -15,7 +15,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 nanobind_add_module(wnetalign_cpp
     NB_STATIC
-    src/cpp/wnetalign.cpp)
+    src/wnetalign/cpp/wnetalign/wnetalign.cpp)
 
 target_include_directories(wnetalign_cpp PRIVATE ${PYLMCF_INCLUDE_DIRS})
 
