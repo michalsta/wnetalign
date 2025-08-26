@@ -1,9 +1,6 @@
 from wnet import Distribution, Distribution_1D, WassersteinNetwork
 from wnetalign import WNetAligner
 from wnet.distances import wrap_distance_function
-from pylmcf.trashes import TrashFactorySimple
-from pylmcf.graph import DecompositableFlowGraph
-from pylmcf.solver import Solver, DeconvolutionSolver
 import numpy as np
 
 
