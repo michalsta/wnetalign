@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core", "nanobind", "wnet @ git+https://github.com/michalsta/pylmcf"]
+requires = ["scikit-build-core", "nanobind", "pylmcf @ git+https://github.com/michalsta/pylmcf", "wnet @ git+https://github.com/michalsta/wnet"]
 build-backend = "scikit_build_core.build"
 
 [project]
