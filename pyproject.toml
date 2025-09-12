@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wnetalign"
-version = "0.9.0"
+version = "0.9.1"
 description = "Python implementation of spectral alignment using Wasserstein metric"
 dependencies = ["pylmcf", "wnet", "numpy"]
 authors = [{ name="Michał Startek", email="michal.startek@mimuw.edu.pl" }]
