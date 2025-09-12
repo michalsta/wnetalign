@@ -55,7 +55,7 @@ class WNetAligner:
 
     def set_point(self, point):
         self.point = point
-        self.graph.set_point(point)
+        self.graph.solve(point)
 
     def total_cost(self):
         return self.graph.total_cost() / self.scale_factor / self.scale_factor

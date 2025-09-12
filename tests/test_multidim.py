@@ -32,7 +32,7 @@ def test_2d():
     DG.add_simple_trash(1000000)
     DG.build()
 
-    DG.set_point([1])
+    DG.solve()
     assert DG.total_cost() == 1414
 
 
