@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core", "nanobind", "pylmcf @ git+https://github.com/michalsta/pylmcf", "wnet @ git+https://github.com/michalsta/wnet"]
+requires = ["scikit-build-core"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -9,4 +9,4 @@ description = "Python implementation of spectral alignment using Wasserstein met
 authors = [
     { name="Michał Startek", email="michal.startek@mimuw.edu.pl" }
 ]
-dependencies = ["wnet @ git+https://github.com/michalsta/wnet"]
+dependencies = ["pylmcf", "wnet", "numpy"]

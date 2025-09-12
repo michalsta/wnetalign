@@ -67,7 +67,7 @@ class WNetAligner:
         result = []
         for i in range(len(self.theoretical_spectra)):
             empirical_peak_idx, theoretical_peak_idx, flow = (
-                self.graph.flows_for_spectrum(i)
+                self.graph.flows_for_target(i)
             )
             result.append(
                 namedtuple(
