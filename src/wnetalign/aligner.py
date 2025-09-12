@@ -1,6 +1,5 @@
 from wnet import Distribution, WassersteinNetwork
 from collections import namedtuple
-from scipy.optimize import minimize
 import numpy as np
 
 
@@ -75,27 +74,6 @@ class WNetAligner:
                 )(empirical_peak_idx, theoretical_peak_idx, flow / self.scale_factor)
             )
         return result
-
-    def solve(self, start_point=None, debug_prints=False):
-        def opt_fun(point):
-            self.graph.set_point(point)
-            ret = self.graph.total_cost()
-            if debug_prints:
-                print(int(np.log10(ret + 1)), ret)
-            return ret
-
-        if start_point is None:
-            start_point = [1.0] * len(self.theoretical_spectra)
-        start_point = self.scale_factor * np.array(start_point)
-
-
-        return minimize(
-            opt_fun,
-            method="Nelder-Mead",
-            x0=start_point,
-            bounds=[(0, None)] * len(self.theoretical_spectra),
-            options={"disp": True, "maxiter": 100000},
-        )
 
     def no_subgraphs(self):
         return self.graph.no_subgraphs()
