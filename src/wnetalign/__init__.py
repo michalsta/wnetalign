@@ -3,5 +3,6 @@
 
 from .aligner import WNetAligner
 
+
 def py_hello():
     print("Hello, World from WNetAlign (Python)!")

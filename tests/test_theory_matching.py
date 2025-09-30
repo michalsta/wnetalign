@@ -1,39 +1,42 @@
+import math
+import numpy as np
+
 from wnetalign.spectrum import Spectrum_1D
 from wnetalign.aligner import WNetAligner as Solver
-import numpy as np
-import math
+
 
 def test_matching():
     s1 = Spectrum_1D([0], [10])
     s2 = Spectrum_1D([1, 2], [5, 5])
-    WN = Solver(s1, [s2], lambda x, y: np.linalg.norm(x - y, axis=0), 100, 10, 10000)
-    WN.set_point([1])
-    assert math.isclose(WN.total_cost(), 15.0)
+    wasserstein_network = Solver(
+        s1, [s2], lambda x, y: np.linalg.norm(x - y, axis=0), 100, 10, 10000
+    )
+    wasserstein_network.set_point([1])
+    assert math.isclose(wasserstein_network.total_cost(), 15.0)
 
 
 def test_matching2():
     s1 = Spectrum_1D([0], [10])
     s2 = Spectrum_1D([1], [4])
     s3 = Spectrum_1D([2], [6])
-    WN = Solver(
+    wasserstein_network = Solver(
         s1, [s2, s3], lambda x, y: np.linalg.norm(x - y, axis=0), 100, 10, 10000
     )
-    WN.set_point([1, 1])
-    assert math.isclose(WN.total_cost(), 16.0)
+    wasserstein_network.set_point([1, 1])
+    assert math.isclose(wasserstein_network.total_cost(), 16.0)
 
 
 def test_matching3():
     s1 = Spectrum_1D([0], [10])
     s2 = Spectrum_1D([1], [4])
     s3 = Spectrum_1D([200], [6])
-    WN = Solver(
+    wasserstein_network = Solver(
         s1, [s2, s3], lambda x, y: np.linalg.norm(x - y, axis=0), 10, 10, 100
     )
-    WN.set_point([1, 1])
-    WN.print_diagnostics()
-    print(WN.flows())
-    print("aaa",WN.total_cost())
-    assert math.isclose(WN.total_cost(), 64.0)
+    wasserstein_network.set_point([1, 1])
+    wasserstein_network.print_diagnostics()
+    assert math.isclose(wasserstein_network.total_cost(), 64.0)
+
 
 if __name__ == "__main__":
     test_matching()

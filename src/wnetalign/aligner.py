@@ -1,6 +1,7 @@
-from wnet import Distribution, WassersteinNetwork
 from collections import namedtuple
 import numpy as np
+
+from wnet import Distribution, WassersteinNetwork
 
 
 class WNetAligner:
@@ -27,11 +28,11 @@ class WNetAligner:
             theoretical_sum_intensity = sum(
                 t.sum_intensities for t in theoretical_spectra
             )
-            max_sum_intensity = max(
-                empirical_sum_intensity, theoretical_sum_intensity
-            )
+            max_sum_intensity = max(empirical_sum_intensity, theoretical_sum_intensity)
             scale_factor = np.sqrt(ALMOST_MAXINT / (max_sum_intensity * trash_cost))
-            assert scale_factor > 0, "Can't auto-compute a sensible scale factor. You might have some luck with setting it manually, but it probably means something about your data or trash_cost is off."
+            assert (
+                scale_factor > 0
+            ), "Can't auto-compute a sensible scale factor. You might have some luck with setting it manually, but it probably means something about your data or trash_cost is off."
 
         self.scale_factor = scale_factor
         self.empirical_spectrum = empirical_spectrum.scaled(scale_factor)
@@ -84,7 +85,9 @@ class WNetAligner:
         print("No empirical nodes:", self.graph.count_empirical_nodes())
         print("No theoretical nodes:", self.graph.count_theoretical_nodes())
         print("Matching density:", self.graph.matching_density())
-        print("Scale factor:", self.scale_factor, f" log10: {np.log10(self.scale_factor)}")
+        print(
+            "Scale factor:", self.scale_factor, f" log10: {np.log10(self.scale_factor)}"
+        )
         print("Total cost:", self.graph.total_cost())
         if not subgraphs_too:
             return
