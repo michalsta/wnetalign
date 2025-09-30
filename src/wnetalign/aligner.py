@@ -1,4 +1,5 @@
 from collections import namedtuple
+from collections.abc import Callable, Sequence
 import numpy as np
 
 from wnet import Distribution, WassersteinNetwork
@@ -7,15 +8,15 @@ from wnet import Distribution, WassersteinNetwork
 class WNetAligner:
     def __init__(
         self,
-        empirical_spectrum,
-        theoretical_spectra,
-        distance_function,
-        max_distance,
-        trash_cost,
-        scale_factor=None,
-    ):
+        empirical_spectrum : Distribution,
+        theoretical_spectra : Sequence[Distribution],
+        distance_function : Callable[[np.ndarray, np.ndarray], np.ndarray],
+        max_distance : int | float,
+        trash_cost : int | float,
+        scale_factor: None | int | float = None,
+    ) -> None:
         assert isinstance(empirical_spectrum, Distribution)
-        assert isinstance(theoretical_spectra, list)
+        assert isinstance(theoretical_spectra, Sequence)
         assert all(isinstance(t, Distribution) for t in theoretical_spectra)
         assert callable(distance_function)
         assert isinstance(max_distance, (int, float))
@@ -53,17 +54,17 @@ class WNetAligner:
         self.graph.build()
         self.point = None
 
-    def set_point(self, point):
+    def set_point(self, point : Sequence[float] | np.ndarray) -> None:
         self.point = point
         self.graph.solve(point)
 
-    def total_cost(self):
+    def total_cost(self) -> float:
         return self.graph.total_cost() / self.scale_factor / self.scale_factor
 
-    def print(self):
+    def print(self) -> None:
         print(str(self.graph))
 
-    def flows(self):
+    def flows(self) -> list[namedtuple]:
         result = []
         for i in range(len(self.theoretical_spectra)):
             empirical_peak_idx, theoretical_peak_idx, flow = (
@@ -76,7 +77,7 @@ class WNetAligner:
             )
         return result
 
-    def no_subgraphs(self):
+    def no_subgraphs(self) -> int:
         return self.graph.no_subgraphs()
 
     def print_diagnostics(self, subgraphs_too=False):
