@@ -2,8 +2,8 @@ import pyopenms as oms
 import pandas as pd
 import numpy as np
 import warnings
-from pylmcf.spectrum import Spectrum
-from pylmcf.solver import Solver
+from wnetalign import Spectrum
+from wnetalign import WNetAligner as Solver
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
