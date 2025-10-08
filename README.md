@@ -16,11 +16,7 @@ pip install wnetalign
 
 ## Usage
 
-```python
-import wnetalign
-
-# Example: ...
-```
+Usage examples can be found in the `tutorials` directory, both for LCMS and NMR datasets.
 
 ## License
 
