@@ -25,3 +25,6 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/michalsta/wnetalign"
 "Repository" = "https://github.com/michalsta/wnetalign.git"
+
+[project.optional-dependencies]
+extras = ["pyopenms"]

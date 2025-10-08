@@ -10,27 +10,6 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 
-def parse_featurexml_to_spectrum(path):
-    """
-    Parse a featureXML file and return a Spectrum object.
-    """
-    # load the featureXML file
-    featureXML = oms.FeatureXMLFile()
-    features = oms.FeatureMap()
-    featureXML.load(path, features)
-    # load m/z, rt, and intensity values from the features
-    mzs = []
-    rts = []
-    intensities = []
-    for feature in features:
-        mzs.append(feature.getMZ())
-        rts.append(feature.getRT())
-        intensities.append(feature.getIntensity())
-    # create a Spectrum object
-    spectrum = Spectrum(np.array([mzs, rts]), np.array(intensities))
-    return spectrum
-
-
 def scale_mz_values(spectrum: Spectrum, scale_factor: int | float) -> Spectrum:
     """
     Scale the m/z values of a Spectrum object by a given factor.
@@ -44,17 +23,17 @@ def spectrum_to_dataframe(spectrum: Spectrum) -> pd.DataFrame:
     """
     Convert a Spectrum object to a DataFrame.
     """
-    return pd.DataFrame(data={'m/z': spectrum.positions[0, :], 
-                            'Retention time': spectrum.positions[1, :], 
+    return pd.DataFrame(data={'m/z': spectrum.positions[0, :],
+                            'Retention time': spectrum.positions[1, :],
                             'Intensity': spectrum.intensities})
 
 
-def align_spectra(S1: Spectrum, 
-                  S2: Spectrum, 
-                  max_mz_shift: int | float, 
-                  max_rt_shift: int | float, 
-                  order= np.inf, 
-                  normalize: bool = True, 
+def align_spectra(S1: Spectrum,
+                  S2: Spectrum,
+                  max_mz_shift: int | float,
+                  max_rt_shift: int | float,
+                  order= np.inf,
+                  normalize: bool = True,
                   find_consensus= True) -> pd.DataFrame:
     """
     Align two spectra using the Wasserstein distance.
@@ -109,8 +88,8 @@ def align_spectra(S1: Spectrum,
     # retrieve the aligned features for evaluation
     if find_consensus:
         # create a DataFrame with the transport plan
-        tp = pd.DataFrame(data={'id1': results.empirical_peak_idx, 
-                                'id2': results.theoretical_peak_idx, 
+        tp = pd.DataFrame(data={'id1': results.empirical_peak_idx,
+                                'id2': results.theoretical_peak_idx,
                                 'transport': results.flow}).sort_values(by='transport', ascending=False)
         # find consensus features (by maximum transport flow)
         ids1 = set()
@@ -123,12 +102,12 @@ def align_spectra(S1: Spectrum,
                 ids2_list.append(row['id2'])
                 ids1.add(row['id1'])
                 ids2.add(row['id2'])
-        
+
         sp1_aligned = sp1.iloc[ids1_list].reset_index(drop=True)
         sp2_aligned = sp2.iloc[ids2_list].reset_index(drop=True)
         # create the transport plan
-        transport_plan = sp1_aligned.join(sp2_aligned, 
-                                        lsuffix='_S1', 
+        transport_plan = sp1_aligned.join(sp2_aligned,
+                                        lsuffix='_S1',
                                         rsuffix='_S2')
 
         return transport_plan
