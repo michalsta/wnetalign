@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 
 from nmr.align import align_pair 
-from nmr.utils_2d import simulate_2d_shifts
+from nmr.simulate import simulate_2d_shifts
 from nmr.postprocess import postprocess_simulated_pair
 from nmr.metrics import extended_confusion_matrix, metrics_from_cm
 

@@ -1,9 +1,8 @@
-from wnetalign.spectrum import Spectrum
-
 import numpy as np
 import pandas as pd
-
 from glob import glob
+
+from wnetalign.spectrum import Spectrum
 
 def read_label(path, dim=2):
 

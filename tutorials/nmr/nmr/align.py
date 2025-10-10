@@ -1,11 +1,10 @@
-from wnetalign.aligner import WNetAligner
-
 import numpy as np
 import pandas as pd
 import os
 from collections import namedtuple
 from itertools import combinations, permutations
 
+from wnetalign.aligner import WNetAligner
 from nmr.load_spectra import load_spectra
 
 def align_pair(S1,
