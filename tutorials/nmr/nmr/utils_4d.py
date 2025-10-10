@@ -1,6 +1,6 @@
 from wnetalign.spectrum import Spectrum
 
-from nmr.load_spectra import load_spectrum, load_spectra
+from nmr.load_spectra import load_spectrum
 
 import numpy as np
 import pandas as pd
