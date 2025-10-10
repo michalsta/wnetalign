@@ -42,7 +42,6 @@ def metrics_multiple_simulations(n,
             l2 = s2.label.split(" ")[-1]
             if f"{l1} vs {l2}" not in metrics: 
                 metrics[f"{l1} vs {l2}"] = {'Accuracy':[], 'Precision (micro)':[], 'Recall (micro)':[], 'Precision (macro)':[], 'Recall (macro)':[]}
-                # metrics[f"{l1} vs {l2}"] = {'Accuracy':[], 'Precision (micro)':[], 'Recall (micro)':[], 'Precision (macro)':[], 'Recall (macro)':[]}
             _, r = align_pair(s1,
                               s2,
                               max_distance=max_distance,
