@@ -1,6 +1,4 @@
 import numpy as np
-import tqdm
-
 from sklearn.metrics import confusion_matrix
 
 from nmr.align import align_pair 
@@ -26,7 +24,7 @@ def metrics_multiple_simulations(n,
                                  default_rng = False,
                                 ):
     metrics = {}
-    for i in tqdm.tqdm(range(n)):
+    for i in range(n):
         simulated_spectra, clusters, _ = simulate_2d_shifts(data_path=DATA_PATH,
                                                             k=k,
                                                             scale_nucl=scale_nucl,
