@@ -97,7 +97,7 @@ class WNetAligner:
             self.empirical_spectrum,
             self.theoretical_spectra,
             wrapped_dist,
-            max_distance * scale_factor,
+            int(max_distance * scale_factor),
         )
         self.graph.add_simple_trash(int(trash_cost * scale_factor))
         self.graph.build()
