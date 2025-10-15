@@ -9,7 +9,7 @@ class Spectrum(Distribution):
     """
     A class representing NMR or MS spectrum data.
     """
-    def __init__(self, coords: np.ndarray, intensities: np.ndarray, label: str | None = None):
+    def __init__(self, positions: np.ndarray, intensities: np.ndarray, label: str | None = None):
         """
         Initialize a Spectrum object. Compared to Distribution, this class
         retains the original intensities (not converted to int) for more precise
@@ -18,13 +18,13 @@ class Spectrum(Distribution):
 
         Parameters
         ----------
-        coords : np.ndarray
+        positions : np.ndarray
             The spatial coordinates of the spectrum (e.g., m/z and RT for MS).
         intensities : np.ndarray
             The intensity values corresponding to the spatial coordinates.
         """
         self.original_intensities = intensities
-        super().__init__(coords, intensities, label=label)
+        super().__init__(positions, intensities, label=label)
 
     @staticmethod
     def FromFeatureXML(path):
@@ -69,7 +69,7 @@ class Spectrum(Distribution):
         Spectrum
             A new Spectrum object with scaled intensities.
         """
-        return Spectrum(self.coords, self.original_intensities * factor, label=self.label)
+        return Spectrum(self.positions, self.original_intensities * factor, label=self.label)
     
     def normalized(self) -> 'Spectrum':
         """
@@ -83,15 +83,15 @@ class Spectrum(Distribution):
         total = self.sum_intensities
         if total == 0:
             raise ValueError("Cannot normalize a spectrum with total intensity of 0.")
-        return Spectrum(self.coords, self.original_intensities / total, label=self.label)
+        return Spectrum(self.positions, self.original_intensities / total, label=self.label)
     
-def Spectrum1D(coords: np.ndarray, intensities: np.ndarray, label: str | None = None) -> Spectrum:
+def Spectrum1D(positions: np.ndarray, intensities: np.ndarray, label: str | None = None) -> Spectrum:
     """
     Create a 1D Spectrum object.
 
     Parameters
     ----------
-    coords : np.ndarray
+    positions : np.ndarray
         The spatial coordinates of the spectrum (e.g., m/z for MS).
     intensities : np.ndarray
         The intensity values corresponding to the spatial coordinates.
@@ -103,11 +103,11 @@ def Spectrum1D(coords: np.ndarray, intensities: np.ndarray, label: str | None = 
     Spectrum
         A 1D Spectrum object.
     """
-    if not isinstance(coords, np.ndarray):
-        coords = np.array(coords)
+    if not isinstance(positions, np.ndarray):
+        positions = np.array(positions)
     if not isinstance(intensities, np.ndarray):
         intensities = np.array(intensities)
-    assert len(coords.shape) == 1
+    assert len(positions.shape) == 1
     assert len(intensities.shape) == 1
-    assert coords.shape[0] == intensities.shape[0]
-    return Spectrum(coords[np.newaxis, :], intensities)
+    assert positions.shape[0] == intensities.shape[0]
+    return Spectrum(positions[np.newaxis, :], intensities)

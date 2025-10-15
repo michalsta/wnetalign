@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from .aligner import WNetAligner
-from .spectrum import Spectrum, Spectrum_1D
+from .spectrum import Spectrum, Spectrum1D
 
 def py_hello():
     print("Hello, World from WNetAlign (Python)!")
