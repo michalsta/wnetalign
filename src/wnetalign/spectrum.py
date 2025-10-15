@@ -70,7 +70,7 @@ class Spectrum(Distribution):
             A new Spectrum object with scaled intensities.
         """
         return Spectrum(self.positions, self.original_intensities * factor, label=self.label)
-    
+
     def normalized(self) -> 'Spectrum':
         """
         Return a new Spectrum object with intensities normalized to sum to 1.
@@ -84,8 +84,8 @@ class Spectrum(Distribution):
         if total == 0:
             raise ValueError("Cannot normalize a spectrum with total intensity of 0.")
         return Spectrum(self.positions, self.original_intensities / total, label=self.label)
-    
-def Spectrum1D(positions: np.ndarray, intensities: np.ndarray, label: str | None = None) -> Spectrum:
+
+def Spectrum_1D(positions: np.ndarray, intensities: np.ndarray, label: str | None = None) -> Spectrum:
     """
     Create a 1D Spectrum object.
 
