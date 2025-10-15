@@ -42,7 +42,7 @@ def simulate_2d_shifts(data_path,
             X_scaled = np.array([spectra[i].positions[0, :], spectra[i].positions[1, :]]).T
             kmeans = KMeans(n_clusters=k, random_state=0, n_init="auto").fit(X_scaled)
             X = np.concatenate([X_scaled[kmeans.labels_ == l] for l in range(k)], axis=0)
-            I = np.concatenate([spectra[i].intensities[kmeans.labels_ == l] for l in range(k)], axis=0)
+            I = np.concatenate([spectra[i].original_intensities[kmeans.labels_ == l] for l in range(k)], axis=0)
             clusters = np.sort(kmeans.labels_)
             simulated_spectra.append(
                 Spectrum(
@@ -101,7 +101,7 @@ def simulate_4d_shifts(file_path,
     labels = np.argmin(distances, axis=1)  # Assign to closest centroid
 
     X_sorted = np.concatenate([X[labels == l] for l in range(k)], axis=0)
-    I_sorted = np.concatenate([spectrum.intensities[labels == l] for l in range(k)], axis=0)
+    I_sorted = np.concatenate([spectrum.original_intensities[labels == l] for l in range(k)], axis=0)
     clusters = np.sort(labels)
 
     spectrum = Spectrum(
@@ -175,7 +175,7 @@ def simulate_7d_shifts(data_path,
         spectrum = load_spectrum(path, dim = 7, scale_nucl={}, verbose=False)
         X = spectrum.positions.T
         X_sorted = np.concatenate([X[labels == l] for l in AA], axis=0)
-        I_sorted = np.concatenate([spectrum.intensities[labels == l] for l in AA], axis=0)
+        I_sorted = np.concatenate([spectrum.original_intensities[labels == l] for l in AA], axis=0)
 
         classes = np.sort(labels)
         aa_by_spectrum.append(classes)
@@ -210,7 +210,7 @@ def save_spectrum(spectrum, assignments, nuclei, scale_nucl, OUT_FOLDER="simulat
     for i, nucl in enumerate(nuclei):
         if nucl in scale_nucl: df[nucl] = spectrum.positions[i, :]*scale_nucl[nucl]
         else: df[nucl] = spectrum.positions[i, :]
-    df['i'] = spectrum.intensities
+    df['i'] = spectrum.original_intensities
     if len(nuclei) == 7: df['amino'] = assignments
     else: df['Assignment'] = assignments
     # df = df.astype({"Assignment":'int64'})
