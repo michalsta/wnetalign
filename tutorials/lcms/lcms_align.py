@@ -69,8 +69,8 @@ def align_spectra(S1: Spectrum,
 
     # normalize the intensity values
     if normalize:
-        S1 = S1.scaled(1000000/sum(S1.intensities))
-        S2 = S2.scaled(1000000/sum(S2.intensities))
+        S1 = S1.normalized()
+        S2 = S2.normalized()
     # define the distance function
     dist_fun = lambda x, y: np.linalg.norm(x - y, axis=0, ord=order)
 
