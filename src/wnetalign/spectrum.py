@@ -1,5 +1,5 @@
-from functools import cached_property
 from typing import Optional
+from functools import cached_property
 
 import numpy as np
 
