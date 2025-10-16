@@ -1,4 +1,5 @@
 from functools import cached_property
+from typing import Optional
 
 import numpy as np
 
@@ -9,7 +10,7 @@ class Spectrum(Distribution):
     """
     A class representing NMR or MS spectrum data.
     """
-    def __init__(self, positions: np.ndarray, intensities: np.ndarray, label: str | None = None):
+    def __init__(self, positions: np.ndarray, intensities: np.ndarray, label: Optional[str] = None):
         """
         Initialize a Spectrum object. Compared to Distribution, this class
         retains the original intensities (not converted to int) for more precise
@@ -85,7 +86,18 @@ class Spectrum(Distribution):
             raise ValueError("Cannot normalize a spectrum with total intensity of 0.")
         return Spectrum(self.positions, self.original_intensities / total, label=self.label)
 
-def Spectrum_1D(positions: np.ndarray, intensities: np.ndarray, label: str | None = None) -> Spectrum:
+    def as_distribution(self) -> Distribution:
+        """
+        Convert the Spectrum object to a Distribution object.
+
+        Returns
+        -------
+        Distribution
+            A Distribution object with the same positions and intensities.
+        """
+        return Distribution(self.positions, self.intensities, label=self.label)
+
+def Spectrum_1D(positions: np.ndarray, intensities: np.ndarray, label: Optional[str] = None) -> Spectrum:
     """
     Create a 1D Spectrum object.
 

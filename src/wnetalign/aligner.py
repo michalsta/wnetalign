@@ -1,5 +1,6 @@
 from collections import namedtuple
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
+from typing import Callable, Optional, Union, List, Tuple
 import numpy as np
 
 from wnet import Distribution, WassersteinNetwork
@@ -56,12 +57,12 @@ class WNetAligner:
     """
     def __init__(
         self,
-        empirical_spectrum : Distribution,
-        theoretical_spectra : Sequence[Distribution],
-        distance_function : Callable[[np.ndarray, np.ndarray], np.ndarray],
-        max_distance : int | float,
-        trash_cost : int | float,
-        scale_factor: None | int | float = None,
+        empirical_spectrum: Distribution,
+        theoretical_spectra: Sequence[Distribution],
+        distance_function: Callable[[np.ndarray, np.ndarray], np.ndarray],
+        max_distance: Union[int, float],
+        trash_cost: Union[int, float],
+        scale_factor: Optional[Union[int, float]] = None,
     ) -> None:
 
         assert isinstance(empirical_spectrum, Distribution)
@@ -103,7 +104,7 @@ class WNetAligner:
         self.graph.build()
         self.point = None
 
-    def set_point(self, point : Sequence[float] | np.ndarray) -> None:
+    def set_point(self, point: Union[Sequence[float], np.ndarray]) -> None:
         """
         Set proportions of theoretical spectra and solve the graph at the given point.
 
