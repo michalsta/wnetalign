@@ -28,3 +28,4 @@ classifiers = [
 
 [project.optional-dependencies]
 extras = ["pyopenms"]
+pytest = ["pytest"]
