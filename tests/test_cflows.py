@@ -10,6 +10,7 @@ def test_flows():
 
     def dist_fun(x, y):
         return np.linalg.norm(x - y, axis=0)
+
     trash_cost = 10
     max_distance = 100
     solver = Solver(

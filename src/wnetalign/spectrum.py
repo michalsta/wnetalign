@@ -10,7 +10,13 @@ class Spectrum(Distribution):
     """
     A class representing NMR or MS spectrum data.
     """
-    def __init__(self, positions: np.ndarray, intensities: np.ndarray, label: Optional[str] = None):
+
+    def __init__(
+        self,
+        positions: np.ndarray,
+        intensities: np.ndarray,
+        label: Optional[str] = None,
+    ):
         """
         Initialize a Spectrum object. Compared to Distribution, this class
         retains the original intensities (not converted to int) for more precise
@@ -33,6 +39,7 @@ class Spectrum(Distribution):
         Parse a featureXML file and return a Spectrum object.
         """
         import pyopenms as oms
+
         # load the featureXML file
         featureXML = oms.FeatureXMLFile()
         features = oms.FeatureMap()
@@ -56,7 +63,7 @@ class Spectrum(Distribution):
         """
         return np.sum(self.original_intensities)
 
-    def scaled(self, factor: float) -> 'Spectrum':
+    def scaled(self, factor: float) -> "Spectrum":
         """
         Return a new Spectrum object with intensities scaled by the given factor.
 
@@ -70,9 +77,11 @@ class Spectrum(Distribution):
         Spectrum
             A new Spectrum object with scaled intensities.
         """
-        return Spectrum(self.positions, self.original_intensities * factor, label=self.label)
+        return Spectrum(
+            self.positions, self.original_intensities * factor, label=self.label
+        )
 
-    def normalized(self) -> 'Spectrum':
+    def normalized(self) -> "Spectrum":
         """
         Return a new Spectrum object with intensities normalized to sum to 1.
 
@@ -84,7 +93,9 @@ class Spectrum(Distribution):
         total = self.sum_intensities
         if total == 0:
             raise ValueError("Cannot normalize a spectrum with total intensity of 0.")
-        return Spectrum(self.positions, self.original_intensities / total, label=self.label)
+        return Spectrum(
+            self.positions, self.original_intensities / total, label=self.label
+        )
 
     def as_distribution(self) -> Distribution:
         """
@@ -97,7 +108,10 @@ class Spectrum(Distribution):
         """
         return Distribution(self.positions, self.intensities, label=self.label)
 
-def Spectrum_1D(positions: np.ndarray, intensities: np.ndarray, label: Optional[str] = None) -> Spectrum:
+
+def Spectrum_1D(
+    positions: np.ndarray, intensities: np.ndarray, label: Optional[str] = None
+) -> Spectrum:
     """
     Create a 1D Spectrum object.
 

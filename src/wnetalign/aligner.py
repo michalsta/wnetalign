@@ -55,6 +55,7 @@ class WNetAligner:
     print_diagnostics(subgraphs_too=False)
         Prints diagnostic information about the alignment and optionally about each subgraph.
     """
+
     def __init__(
         self,
         empirical_spectrum: Distribution,
