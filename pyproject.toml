@@ -1,8 +1,8 @@
 [build-system]
-#requires = ["scikit-build-core"]
-#build-backend = "scikit_build_core.build"
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core"]
+build-backend = "scikit_build_core.build"
+#requires = ["setuptools>=61.0", "wheel"]
+#build-backend = "setuptools.build_meta"
 
 
 [project]
@@ -29,3 +29,18 @@ classifiers = [
 [project.optional-dependencies]
 extras = ["pyopenms"]
 pytest = ["pytest", "pandas", "numpy"]
+
+[tool.scikit-build.sdist]
+exclude = ["**/*"]
+include = [
+    "/src/**/*.py",
+    "/src/**/*.c",
+    "/src/**/*.hpp",
+    "/src/**/*.h",
+    "/src/**/*.cpp",
+    "/src/**/*.cc",
+    "/LICENCE",
+    "/README.md",
+    "/pyproject.toml",
+    "/CMakeLists.txt"
+]
