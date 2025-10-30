@@ -1,4 +1,3 @@
-import pyopenms as oms
 import pandas as pd
 import numpy as np
 import warnings
