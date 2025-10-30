@@ -81,7 +81,6 @@ def align_spectra(S1: Spectrum,
         distance_function=dist_fun,
         max_distance=mtd,
         trash_cost=mtd,
-        scale_factor=10000,
     )
     results.set_point([1])
     results = results.flows()[0]
