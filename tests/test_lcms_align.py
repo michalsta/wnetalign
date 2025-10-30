@@ -9,7 +9,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 
-def scale_mz_values(spectrum: Spectrum, scale_factor: int | float) -> Spectrum:
+def scale_mz_values(spectrum: Spectrum, scale_factor) -> Spectrum:
     """
     Scale the m/z values of a Spectrum object by a given factor.
     """
@@ -29,8 +29,8 @@ def spectrum_to_dataframe(spectrum: Spectrum) -> pd.DataFrame:
 
 def align_spectra(S1: Spectrum,
                   S2: Spectrum,
-                  max_mz_shift: int | float,
-                  max_rt_shift: int | float,
+                  max_mz_shift,
+                  max_rt_shift,
                   order= np.inf,
                   normalize: bool = True,
                   find_consensus= True) -> pd.DataFrame:
