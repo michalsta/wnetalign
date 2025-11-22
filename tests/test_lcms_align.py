@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import warnings
+from wnet.distances import DistanceMetric
 from wnetalign import Spectrum
 from wnetalign import WNetAligner as Solver
 
@@ -70,14 +71,23 @@ def align_spectra(S1: Spectrum,
     if normalize:
         S1 = S1.normalized()
         S2 = S2.normalized()
+
     # define the distance function
-    dist_fun = lambda x, y: np.linalg.norm(x - y, axis=0, ord=order)
+    if order == 2:
+        dist_fun = DistanceMetric.L2
+    elif order == 1:
+        dist_fun = DistanceMetric.L1
+    elif order == np.inf:
+        dist_fun = DistanceMetric.LINF
+    else:
+        raise ValueError("Unsupported order for distance metric.")
+
 
     # calculate the transport plan
     results = Solver(
         empirical_spectrum=S1,
         theoretical_spectra=[S2],
-        distance_function=dist_fun,
+        distance=dist_fun,
         max_distance=mtd,
         trash_cost=mtd,
     )

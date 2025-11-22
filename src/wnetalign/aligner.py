@@ -4,6 +4,7 @@ from typing import Callable, Optional, Union, List, Tuple
 import numpy as np
 
 from wnet import Distribution, WassersteinNetwork
+from wnet.distances import DistanceMetric
 
 
 class WNetAligner:
@@ -60,7 +61,7 @@ class WNetAligner:
         self,
         empirical_spectrum: Distribution,
         theoretical_spectra: Sequence[Distribution],
-        distance_function: Callable[[np.ndarray, np.ndarray], np.ndarray],
+        distance: DistanceMetric,
         max_distance: Union[int, float],
         trash_cost: Union[int, float],
         scale_factor: Optional[Union[int, float]] = None,
@@ -69,7 +70,7 @@ class WNetAligner:
         assert isinstance(empirical_spectrum, Distribution)
         assert isinstance(theoretical_spectra, Sequence)
         assert all(isinstance(t, Distribution) for t in theoretical_spectra)
-        assert callable(distance_function)
+        #assert callable(distance_function)
         assert isinstance(max_distance, (int, float))
         assert isinstance(trash_cost, (int, float))
         assert scale_factor is None or isinstance(scale_factor, (int, float))
@@ -81,24 +82,31 @@ class WNetAligner:
                 t.sum_intensities for t in theoretical_spectra
             )
             max_sum_intensity = max(empirical_sum_intensity, theoretical_sum_intensity)
-            scale_factor = np.sqrt(ALMOST_MAXINT / (max_sum_intensity * trash_cost))
+
+            bounding_box_min, bounding_box_max = empirical_spectrum.bounding_box()
+            for t in theoretical_spectra:
+                t_min, t_max = t.bounding_box()
+                bounding_box_min = np.minimum(bounding_box_min, t_min)
+                bounding_box_max = np.maximum(bounding_box_max, t_max)
+            max_distance_in_space = np.linalg.norm(
+                bounding_box_max - bounding_box_min, ord=1
+            )
+            if max_distance_in_space == 0:
+                max_distance_in_space = 1.0
+
+            scale_factor = np.sqrt(ALMOST_MAXINT / max((max_sum_intensity * trash_cost,)))
             assert (
                 scale_factor > 0
             ), "Can't auto-compute a sensible scale factor. You might have some luck with setting it manually, but it probably means something about your data or trash_cost is off."
 
         self.scale_factor = scale_factor
-        self.empirical_spectrum = empirical_spectrum.scaled(scale_factor)
-        self.theoretical_spectra = [t.scaled(scale_factor) for t in theoretical_spectra]
-
-        def wrapped_dist(p, y):
-            i = p.index
-            x = p.positions[:, i : i + 1]
-            return distance_function(x[: np.newaxis], y) * scale_factor
+        self.empirical_spectrum = empirical_spectrum.positions_intensities_scaled(scale_factor)
+        self.theoretical_spectra = [t.positions_intensities_scaled(scale_factor) for t in theoretical_spectra]
 
         self.graph = WassersteinNetwork(
             self.empirical_spectrum,
             self.theoretical_spectra,
-            wrapped_dist,
+            distance,
             int(max_distance * scale_factor),
         )
         self.graph.add_simple_trash(int(trash_cost * scale_factor))

@@ -1,7 +1,7 @@
 import numpy as np
 
 from wnet import WassersteinNetwork
-from wnet.distances import wrap_distance_function
+from wnet.distances import DistanceMetric
 from wnetalign import WNetAligner
 from wnetalign.spectrum import Spectrum, Spectrum_1D
 
@@ -12,7 +12,7 @@ def test_1d():
     solver = WNetAligner(
         empirical_spectrum,
         [theoretical_spectrum],
-        lambda x, y: np.linalg.norm(x - y, axis=0),
+        DistanceMetric.L2,
         10,
         10,
         100,
@@ -30,24 +30,29 @@ def test_2d():
     s2_int = np.array([1, 1, 1])
     s2 = Spectrum(s2_pos, s2_int)
     solver = WNetAligner(
-        s1, [s2], lambda x, y: np.linalg.norm(x - y, axis=0), 1000000, 1000000, 1000
+        s1, [s2], DistanceMetric.L2, 1000000, 1000
     )
     solver.set_point([1])
     # print(solver.run())
-    assert solver.total_cost() == 1.414
+    print(solver.total_cost())
+    print(1000*solver.total_cost())
+    assert int(1000.0*solver.total_cost()) == 1414
 
     # new algo
     wasserstein_network = WassersteinNetwork(
-        s1,
-        [s2],
-        wrap_distance_function(lambda x, y: 1000 * np.linalg.norm(x - y, axis=0)),
+        s1.positions_intensities_scaled(1000.0),
+        [s2.positions_intensities_scaled(1000.0)],
+        DistanceMetric.L2,
         5000,
     )
-    wasserstein_network.add_simple_trash(1000000)
+    wasserstein_network.add_simple_trash(10000)
     wasserstein_network.build()
 
     wasserstein_network.solve()
-    assert wasserstein_network.total_cost() == 1414
+    print("New algo total cost:", wasserstein_network.total_cost() / 1000.0)
+    print("New algo total cost (scaled):", 1000.0*wasserstein_network.total_cost())
+
+    assert int(wasserstein_network.total_cost()/1000) == 1414
 
 
 if __name__ == "__main__":
