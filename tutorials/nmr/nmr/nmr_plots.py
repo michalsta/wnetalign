@@ -71,8 +71,8 @@ def plot_aligned_kmeans(results_path,
                         ):
     
     mapped_df = postprocess_chain_results(results_path)
-    X = np.array([mapped_df["15N"], mapped_df["1H"]]).T
-    X_scaled = np.array([mapped_df["15N"]/10, mapped_df["1H"]]).T
+    X = np.array([mapped_df["25C_15N"], mapped_df["25C_1H"]]).T
+    X_scaled = np.array([mapped_df["25C_15N"]/10, mapped_df["25C_1H"]]).T
     kmeans = KMeans(n_clusters=k, random_state=0, n_init="auto").fit(X_scaled)
 
     cmap = plt.get_cmap(cmap_name)
