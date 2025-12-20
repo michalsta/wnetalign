@@ -5,6 +5,9 @@ from collections import namedtuple
 from itertools import combinations, permutations
 
 from wnetalign.aligner import WNetAligner
+# from wnet.distances import L1Distance, wrap_distance_function
+from wnet.wnet_cpp import DistanceMetric
+
 from nmr.load_spectra import load_spectra
 
 def align_pair(S1,
@@ -22,8 +25,11 @@ def align_pair(S1,
         S2 = S2.normalized()
     solver = WNetAligner(
             empirical_spectrum = S1,
-            theoretical_spectra = [S2], 
-            distance_function = lambda x, y: np.linalg.norm(x - y, axis=0),
+            theoretical_spectra = (S2,), 
+            # distance = lambda x, y: np.linalg.norm(x - y, axis=0),
+            # distance = L1Distance(),
+            # distance = wrap_distance_function(lambda x, y: np.linalg.norm(x - y, axis=0)),
+            distance = DistanceMetric.L2,
             max_distance = max_distance,
             trash_cost = trash_cost,
             scale_factor = intensity_scaling,

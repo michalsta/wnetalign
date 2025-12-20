@@ -197,7 +197,7 @@ def simulate_7d_shifts(data_path,
         simulated_spectra.append(simulated_spectrum)
 
         if OUT_FOLDER:
-            save_spectrum(simulated_spectrum, assignment=classes, nuclei=lims_nucl.keys(), OUT_FOLDER=out_folder)
+            save_spectrum(simulated_spectrum, assignments=classes, nuclei=lims_nucl.keys(), scale_nucl={}, OUT_FOLDER=out_folder)
     
     return simulated_spectra, spectra, aa_by_spectrum, shifts_aa_x_nucl
 

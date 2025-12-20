@@ -6,7 +6,16 @@ from sklearn.metrics import confusion_matrix
 from nmr.align import align_pair
 from nmr.postprocess import postprocess_simulated_pair
 
-def metrics_simulated_CM(spectra, max_distances, trash_costs, classes, scale_nucl={'15N':10}, nuclei=['15N', '1H'], extended=False, warn=True):
+def metrics_simulated_CM(spectra, 
+                         max_distances, 
+                         trash_costs, 
+                         classes, 
+                         scale_nucl={'15N':10}, 
+                         nuclei=['15N', '1H'], 
+                         normalize = True,
+                         intensity_scaling=None, 
+                         extended=False, 
+                         warn=True):
 
     metrics = {'Accuracy':{}, 'Precision (micro)':{}, 'Recall (micro)':{}, 'Precision (macro)':{}, 'Recall (macro)':{}}
     
@@ -27,7 +36,8 @@ def metrics_simulated_CM(spectra, max_distances, trash_costs, classes, scale_nuc
                                   s2,
                                   max_distance = m_d,
                                   trash_cost = t_c,
-                                  normalize = True,
+                                  normalize = normalize,
+                                  intensity_scaling=intensity_scaling,
                                  )
                 
                 df_max = postprocess_simulated_pair(s1, l1, s2, l2, r, classes, scale_nucl, nuclei, find_max_flow=True)
