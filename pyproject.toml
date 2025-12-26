@@ -1,13 +1,13 @@
 [build-system]
-requires = ["scikit-build-core"]
-build-backend = "scikit_build_core.build"
-#requires = ["setuptools>=61.0", "wheel"]
-#build-backend = "setuptools.build_meta"
+#requires = ["scikit-build-core"]
+#build-backend = "scikit_build_core.build"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 
 [project]
 name = "wnetalign"
-version = "0.9.5"
+version = "0.9.6"
 description = "Python implementation of spectral alignment using Wasserstein metric"
 dependencies = ["pylmcf", "wnet", "numpy"]
 authors = [{ name="Michał Startek", email="michal.startek@mimuw.edu.pl" }]
