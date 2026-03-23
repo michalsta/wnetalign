@@ -4,11 +4,17 @@ from functools import cached_property
 import numpy as np
 
 from wnet import Distribution
+from wnetalign import wnetalign_cpp
+
+
+def _get_cpp_spectrum_class(dim: int):
+    return getattr(wnetalign_cpp, f"Spectrum{dim}")
 
 
 class Spectrum(Distribution):
     """
     A class representing NMR or MS spectrum data.
+    Thin wrapper around the C++ Spectrum<DIM> class.
     """
 
     def __init__(
@@ -27,11 +33,18 @@ class Spectrum(Distribution):
         ----------
         positions : np.ndarray
             The spatial coordinates of the spectrum (e.g., m/z and RT for MS).
+            Shape: (dim, num_points)
         intensities : np.ndarray
             The intensity values corresponding to the spatial coordinates.
         """
-        self.original_intensities = intensities
         super().__init__(positions, intensities, label=label)
+        dimension = positions.shape[0]
+        cpp_cls = _get_cpp_spectrum_class(dimension)
+        self._cpp = cpp_cls(
+            positions.astype(np.float64),
+            intensities.astype(np.float64),
+        )
+        self.original_intensities = intensities
 
     @staticmethod
     def FromFeatureXML(path):
@@ -61,7 +74,7 @@ class Spectrum(Distribution):
         """
         Return the sum of the original intensities.
         """
-        return np.sum(self.original_intensities)
+        return self._cpp.sum_intensities()
 
     def scaled(self, factor: float) -> "Spectrum":
         """
@@ -100,6 +113,8 @@ class Spectrum(Distribution):
     def as_distribution(self) -> Distribution:
         """
         Convert the Spectrum object to a Distribution object.
+        Uses the C++ Spectrum's to_vector_distribution() to create the
+        CVectorDistribution with int64 intensities.
 
         Returns
         -------
@@ -107,6 +122,13 @@ class Spectrum(Distribution):
             A Distribution object with the same positions and intensities.
         """
         return Distribution(self.positions, self.intensities, label=self.label)
+
+    def to_vector_distribution(self):
+        """
+        Return the C++ CVectorDistribution (int64 intensities) directly
+        from the underlying C++ Spectrum.
+        """
+        return self._cpp.to_vector_distribution()
 
 
 def Spectrum_1D(
