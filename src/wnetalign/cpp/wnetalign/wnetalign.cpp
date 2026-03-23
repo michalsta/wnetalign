@@ -56,6 +56,12 @@
         .def("count_empirical_nodes", &WNetAligner_##DIM::count_empirical_nodes) \
         .def("count_theoretical_nodes", &WNetAligner_##DIM::count_theoretical_nodes) \
         .def("matching_density", &WNetAligner_##DIM::matching_density) \
+        .def("consensus_for_target", [](const WNetAligner_##DIM& self, size_t target_id) { \
+            auto [emp, theo] = self.consensus_for_target(target_id); \
+            return nb::make_tuple( \
+                vector_to_numpy<LEMON_INDEX>(emp), \
+                vector_to_numpy<LEMON_INDEX>(theo)); \
+        }, nb::rv_policy::move) \
         .def("__str__", &WNetAligner_##DIM::to_string);
 
 NB_MODULE(wnetalign_cpp, m) {

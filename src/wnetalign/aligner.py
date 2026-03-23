@@ -85,6 +85,13 @@ class WNetAligner:
             )
         return result
 
+    def consensus(self, target_id: int = 0):
+        """
+        Returns (empirical_ids, theoretical_ids) of greedy 1-to-1 consensus pairs
+        for the given target spectrum, selected by descending flow.
+        """
+        return self._cpp.consensus_for_target(target_id)
+
     def no_subgraphs(self) -> int:
         """
         Returns the number of subgraphs in the alignment network.

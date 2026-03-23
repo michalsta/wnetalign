@@ -9,7 +9,6 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-
 def scale_mz_values(spectrum: Spectrum, scale_factor) -> Spectrum:
     """
     Scale the m/z values of a Spectrum object by a given factor.
@@ -23,18 +22,24 @@ def spectrum_to_dataframe(spectrum: Spectrum) -> pd.DataFrame:
     """
     Convert a Spectrum object to a DataFrame.
     """
-    return pd.DataFrame(data={'m/z': spectrum.positions[0, :],
-                            'Retention time': spectrum.positions[1, :],
-                            'Intensity': spectrum.intensities})
+    return pd.DataFrame(
+        data={
+            "m/z": spectrum.positions[0, :],
+            "Retention time": spectrum.positions[1, :],
+            "Intensity": spectrum.intensities,
+        }
+    )
 
 
-def align_spectra(S1: Spectrum,
-                  S2: Spectrum,
-                  max_mz_shift,
-                  max_rt_shift,
-                  order= np.inf,
-                  normalize: bool = True,
-                  find_consensus= True) -> pd.DataFrame:
+def align_spectra(
+    S1: Spectrum,
+    S2: Spectrum,
+    max_mz_shift,
+    max_rt_shift,
+    order=np.inf,
+    normalize: bool = True,
+    find_consensus=True,
+) -> pd.DataFrame:
     """
     Align two spectra using the Wasserstein distance.
 
@@ -82,7 +87,6 @@ def align_spectra(S1: Spectrum,
     else:
         raise ValueError("Unsupported order for distance metric.")
 
-
     # calculate the transport plan
     results = Solver(
         empirical_spectrum=S1,
@@ -92,48 +96,36 @@ def align_spectra(S1: Spectrum,
         trash_cost=mtd,
     )
     results.set_point([1])
-    results = results.flows()[0]
-    # retrieve the aligned features for evaluation
     if find_consensus:
-        # create a DataFrame with the transport plan
-        tp = pd.DataFrame(data={'id1': results.empirical_peak_idx,
-                                'id2': results.theoretical_peak_idx,
-                                'transport': results.flow}).sort_values(by='transport', ascending=False)
-        # find consensus features (by maximum transport flow)
-        ids1 = set()
-        ids2 = set()
-        ids1_list = []
-        ids2_list = []
-        for _, row in tp.iterrows():
-            if row['id1'] not in ids1 and row['id2'] not in ids2:
-                ids1_list.append(row['id1'])
-                ids2_list.append(row['id2'])
-                ids1.add(row['id1'])
-                ids2.add(row['id2'])
+        ids1_list, ids2_list = results.consensus(0)
 
         sp1_aligned = sp1.iloc[ids1_list].reset_index(drop=True)
         sp2_aligned = sp2.iloc[ids2_list].reset_index(drop=True)
-        # create the transport plan
-        transport_plan = sp1_aligned.join(sp2_aligned,
-                                        lsuffix='_S1',
-                                        rsuffix='_S2')
+        transport_plan = sp1_aligned.join(sp2_aligned, lsuffix="_S1", rsuffix="_S2")
 
         return transport_plan
     else:
-        return results
+        return results.flows()[0]
+
 
 def test_align_spectra():
     from pathlib import Path
 
-    datadir = Path(__file__).parent.parent / 'tutorials' / 'lcms' / 'data'
-    filename1 = '100825O2c1_MT-AU-0044-2010-08-15_038.csv'
-    filename2 = '100820O2c1_MT-AU-0044-2010-08-1_030.csv'
+    datadir = Path(__file__).parent.parent / "tutorials" / "lcms" / "data"
+    filename1 = "100825O2c1_MT-AU-0044-2010-08-15_038.csv"
+    filename2 = "100820O2c1_MT-AU-0044-2010-08-1_030.csv"
 
     sp1 = pd.read_csv(datadir / filename1)
     sp2 = pd.read_csv(datadir / filename2)
 
-    S1 = Spectrum(np.array([sp1['m/z'].values, sp1['Retention time'].values]), np.array(sp1['Intensity'].values))
-    S2 = Spectrum(np.array([sp2['m/z'].values, sp2['Retention time'].values]), np.array(sp2['Intensity'].values))
+    S1 = Spectrum(
+        np.array([sp1["m/z"].values, sp1["Retention time"].values]),
+        np.array(sp1["Intensity"].values),
+    )
+    S2 = Spectrum(
+        np.array([sp2["m/z"].values, sp2["Retention time"].values]),
+        np.array(sp2["Intensity"].values),
+    )
 
     max_mz_shift = 0.005
     max_rt_shift = 800
@@ -144,5 +136,3 @@ def test_align_spectra():
 
 if __name__ == "__main__":
     test_align_spectra()
-
-

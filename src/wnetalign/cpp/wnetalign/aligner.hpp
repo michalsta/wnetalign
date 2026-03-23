@@ -3,8 +3,10 @@
 
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 #include <vector>
 #include <tuple>
+#include <unordered_set>
 
 #include "spectrum.hpp"
 #include "wnet/decompositable_graph.hpp"
@@ -138,6 +140,33 @@ public:
 
     std::string to_string() const {
         return network_.to_string();
+    }
+
+    /// Greedy consensus matching for a given target spectrum.
+    /// Returns (empirical_ids, theoretical_ids) of the 1-to-1 consensus pairs,
+    /// selected greedily by descending flow magnitude.
+    std::pair<std::vector<LEMON_INDEX>, std::vector<LEMON_INDEX>>
+    consensus_for_target(size_t target_id) const {
+        auto [emp_ids, theo_ids, flows] = network_.flows_for_target(target_id);
+        // Sort indices by flow descending
+        std::vector<size_t> order(emp_ids.size());
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+            return flows[a] > flows[b];
+        });
+        std::unordered_set<LEMON_INDEX> used_emp, used_theo;
+        std::vector<LEMON_INDEX> cons_emp, cons_theo;
+        for (size_t idx : order) {
+            LEMON_INDEX e = emp_ids[idx];
+            LEMON_INDEX t = theo_ids[idx];
+            if (used_emp.find(e) == used_emp.end() && used_theo.find(t) == used_theo.end()) {
+                used_emp.insert(e);
+                used_theo.insert(t);
+                cons_emp.push_back(e);
+                cons_theo.push_back(t);
+            }
+        }
+        return {cons_emp, cons_theo};
     }
 };
 

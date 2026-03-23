@@ -5,9 +5,7 @@
 #include <vector>
 #include <array>
 #include <cmath>
-#include <set>
 #include <cassert>
-#include <algorithm>
 #include <filesystem>
 
 #include "wnetalign/spectrum.hpp"
@@ -109,31 +107,10 @@ int main(int argc, char* argv[]) {
     std::cout << "Solving..." << std::endl;
     aligner.set_point({1.0});
 
-    auto [emp_ids, theo_ids, flows] = aligner.flows_for_target(0);
-    double sf = aligner.scale_factor();
+    std::cout << "  Scale factor: " << aligner.scale_factor() << std::endl;
 
-    std::cout << "  Total flow edges: " << emp_ids.size() << std::endl;
-    std::cout << "  Scale factor: " << sf << std::endl;
-
-    // Find consensus features (greedy by max transport)
-    // Sort by flow descending
-    std::vector<size_t> order(emp_ids.size());
-    std::iota(order.begin(), order.end(), 0);
-    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
-        return flows[a] > flows[b];
-    });
-
-    std::set<int64_t> used_emp, used_theo;
-    size_t consensus_count = 0;
-    for (size_t idx : order) {
-        int64_t e = emp_ids[idx];
-        int64_t t = theo_ids[idx];
-        if (used_emp.find(e) == used_emp.end() && used_theo.find(t) == used_theo.end()) {
-            used_emp.insert(e);
-            used_theo.insert(t);
-            consensus_count++;
-        }
-    }
+    auto [cons_emp, cons_theo] = aligner.consensus_for_target(0);
+    size_t consensus_count = cons_emp.size();
 
     std::cout << "  Consensus features: " << consensus_count << std::endl;
     assert(consensus_count > 25000);
