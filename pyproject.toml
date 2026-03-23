@@ -18,6 +18,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Development Status :: 4 - Beta",
 ]
+requires-python = ">=3.9"
 
 [project.urls]
 "Homepage" = "https://github.com/michalsta/wnetalign"
