@@ -12,12 +12,12 @@
 #include <nanobind/ndarray.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/array.h>
-#include "wnet/py_support.hpp"
-#include "wnet/misc.hpp"
+#include <wnet/py_support.hpp>
+#include <wnet/misc.hpp>
 namespace nb = nanobind;
 #endif
 
-#include "wnet/distribution.hpp"
+#include <wnet/distribution.hpp>
 
 template<size_t DIM>
 class Spectrum {

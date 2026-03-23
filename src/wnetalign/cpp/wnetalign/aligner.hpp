@@ -9,8 +9,9 @@
 #include <unordered_set>
 
 #include "spectrum.hpp"
-#include "wnet/decompositable_graph.hpp"
-#include "wnet/distances.hpp"
+#include <wnet/decompositable_graph.hpp>
+#include <wnet/distances.hpp>
+#include <wnet/distribution.hpp>
 
 template<size_t DIM>
 class WNetAligner {
