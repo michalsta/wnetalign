@@ -31,3 +31,12 @@ target_compile_definitions(wnetalign_cpp PRIVATE INCLUDE_NANOBIND_STUFF)
 
 install(TARGETS wnetalign_cpp LIBRARY DESTINATION wnetalign)
 
+# Pure C++ test executable
+add_executable(test_lcms_align tests_cpp/test_lcms_align.cpp)
+target_include_directories(test_lcms_align PRIVATE
+    src/wnetalign/cpp
+    ${PYLMCF_INCLUDE_DIRS}
+    ${WNET_INCLUDE_DIRS}
+)
+target_compile_features(test_lcms_align PRIVATE cxx_std_20)
+
