@@ -66,6 +66,11 @@ class WNetAligner {
         double trash_cost,
         double scale_factor)
     {
+        if (theoretical.empty())
+            throw std::invalid_argument("Need at least one theoretical spectrum");
+        if (empirical.size() == 0)
+            throw std::invalid_argument("Empirical spectrum is empty");
+
         VecDist emp_dist = scale_spectrum(empirical, scale_factor);
 
         std::vector<VecDist> theo_dists;
