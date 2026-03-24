@@ -41,6 +41,8 @@ class WNetAligner {
         const std::vector<Spectrum<DIM>*>& theoretical,
         double trash_cost)
     {
+        if (trash_cost < 0)
+            throw std::invalid_argument("trash_cost must be non-negative, got " + std::to_string(trash_cost));
         constexpr int64_t ALMOST_MAXINT = 1LL << 60;
         double empirical_sum = empirical.sum_intensities();
         double theoretical_sum = 0;
@@ -48,7 +50,12 @@ class WNetAligner {
             theoretical_sum += t->sum_intensities();
         }
         double max_sum = std::max(empirical_sum, theoretical_sum);
-        return std::sqrt(static_cast<double>(ALMOST_MAXINT) / (max_sum * trash_cost));
+        if (max_sum <= 0)
+            throw std::invalid_argument("max intensity sum must be positive (got " + std::to_string(max_sum) + "). Are all spectra empty?");
+        double product = max_sum * trash_cost;
+        if (std::isinf(product))
+            throw std::overflow_error("max_sum * trash_cost overflows double (" + std::to_string(max_sum) + " * " + std::to_string(trash_cost) + ")");
+        return std::sqrt(static_cast<double>(ALMOST_MAXINT) / product);
     }
 
     static WassersteinNetwork<int64_t, int64_t> build_network(
