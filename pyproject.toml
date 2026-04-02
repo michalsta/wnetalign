@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "wnetalign"
-version = "0.9.6"
+version = "0.9.7"
 description = "Python implementation of spectral alignment using Wasserstein metric"
 dependencies = ["pylmcf", "wnet", "numpy"]
 authors = [{ name="Michał Startek", email="michal.startek@mimuw.edu.pl" }]
