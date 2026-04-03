@@ -148,11 +148,14 @@ public:
     /// selected greedily by descending flow magnitude.
     std::pair<std::vector<LEMON_INDEX>, std::vector<LEMON_INDEX>>
     consensus_for_target(size_t target_id) const {
-        auto [emp_ids, theo_ids, flows] = network_.flows_for_target(target_id);
+        auto flow_result = network_.flows_for_target(target_id);
+        auto& emp_ids = std::get<0>(flow_result);
+        auto& theo_ids = std::get<1>(flow_result);
+        auto& flows = std::get<2>(flow_result);
         // Sort indices by flow descending
         std::vector<size_t> order(emp_ids.size());
         std::iota(order.begin(), order.end(), 0);
-        std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+        std::sort(order.begin(), order.end(), [&flows](size_t a, size_t b) {
             return flows[a] > flows[b];
         });
         std::unordered_set<LEMON_INDEX> used_emp, used_theo;
