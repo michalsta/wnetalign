@@ -12,14 +12,19 @@ def module_main():
         description="WNetAlign: A tool for aligning of spectrometry data."
     )
     parser.add_argument("--version", "-v", action="version", version=__version__)
-    # parser.add_argument("--include", "-i", help="Print include path for C++ headers", action="store_true")
+    parser.add_argument(
+        "--include",
+        "-i",
+        help="Print include path for C++ headers",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
-    # if args.include:
-    #    print(Path(__file__).parent / "cpp")
-    # else:
-    parser.print_help()
+    if args.include:
+        print(Path(__file__).parent / "cpp")
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":
