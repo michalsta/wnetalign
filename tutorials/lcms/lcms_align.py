@@ -4,10 +4,10 @@ import numpy as np
 import warnings
 from wnetalign import Spectrum
 from wnetalign import WNetAligner as Solver
+from wnet.wnet_cpp import DistanceMetric
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
-
 
 
 def scale_mz_values(spectrum: Spectrum, scale_factor: int | float) -> Spectrum:
@@ -23,7 +23,8 @@ def spectrum_to_dataframe(spectrum: Spectrum) -> pd.DataFrame:
     """
     Convert a Spectrum object to a DataFrame.
     """
-    return pd.DataFrame(data={'m/z': spectrum.positions[0, :],
+    return pd.DataFrame(data={'Feature ID': spectrum.label,
+                            'm/z': spectrum.positions[0, :],
                             'Retention time': spectrum.positions[1, :],
                             'Intensity': spectrum.intensities})
 
@@ -72,16 +73,24 @@ def align_spectra(S1: Spectrum,
         S1 = S1.normalized()
         S2 = S2.normalized()
     # define the distance function
-    dist_fun = lambda x, y: np.linalg.norm(x - y, axis=0, ord=order)
+    if order == np.inf:
+        dist = DistanceMetric.LINF
+    elif order == 1:
+        dist = DistanceMetric.L1
+    elif order == 2:
+        dist = DistanceMetric.L2
+    else:
+        dist = DistanceMetric.LINF
+        raise ValueError('Unsupported order. Use np.inf, 1, or 2. Setting order to np.inf.')
+    
 
     # calculate the transport plan
     results = Solver(
         empirical_spectrum=S1,
         theoretical_spectra=[S2],
-        distance_function=dist_fun,
+        distance=dist,
         max_distance=mtd,
         trash_cost=mtd,
-        scale_factor=10000,
     )
     results.set_point([1])
     results = results.flows()[0]
