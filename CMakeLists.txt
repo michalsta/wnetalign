@@ -13,6 +13,10 @@ execute_process(
 )
 
 
+if(APPLE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment version")
+endif()
+
 project(wnetalign LANGUAGES CXX)
 find_package(Python 3.8
   REQUIRED COMPONENTS Interpreter Development.Module
