@@ -29,7 +29,9 @@
                 int distance, \
                 double max_distance, \
                 double trash_cost, \
-                double scale_factor) { \
+                double scale_factor, \
+                double experimental_trash_cost, \
+                double theoretical_trash_cost) { \
             std::vector<Spectrum<DIM>*> theoretical; \
             theoretical.reserve(nb::len(theoretical_list)); \
             for (auto item : theoretical_list) { \
@@ -37,10 +39,13 @@
             } \
             new (self) WNetAligner_##DIM(empirical, theoretical, \
                 static_cast<DistanceMetric>(distance), \
-                max_distance, trash_cost, scale_factor); \
+                max_distance, trash_cost, scale_factor, \
+                experimental_trash_cost, theoretical_trash_cost); \
         }, nb::arg("empirical"), nb::arg("theoretical"), \
            nb::arg("distance"), nb::arg("max_distance"), \
-           nb::arg("trash_cost"), nb::arg("scale_factor") = 0.0) \
+           nb::arg("trash_cost") = -1.0, nb::arg("scale_factor") = 0.0, \
+           nb::arg("experimental_trash_cost") = -1.0, \
+           nb::arg("theoretical_trash_cost") = -1.0) \
         .def("set_point", &WNetAligner_##DIM::set_point) \
         .def("total_cost", &WNetAligner_##DIM::total_cost) \
         .def("scale_factor", &WNetAligner_##DIM::scale_factor) \

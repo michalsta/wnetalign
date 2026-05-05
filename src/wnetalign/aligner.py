@@ -25,10 +25,14 @@ class WNetAligner:
         theoretical_spectra: Sequence[Spectrum],
         distance: DistanceMetric,
         max_distance: Union[int, float],
-        trash_cost: Union[int, float],
+        trash_cost: Optional[Union[int, float]] = None,
         scale_factor: Optional[Union[int, float]] = None,
+        experimental_trash_cost: Optional[Union[int, float]] = None,
+        theoretical_trash_cost: Optional[Union[int, float]] = None,
     ) -> None:
-        # Ensure all spectra have their C++ backing objects
+        if trash_cost is None and experimental_trash_cost is None and theoretical_trash_cost is None:
+            raise ValueError("At least one of trash_cost, experimental_trash_cost, or theoretical_trash_cost must be provided.")
+
         assert hasattr(
             empirical_spectrum, "_cpp"
         ), "empirical_spectrum must be a Spectrum with a C++ backing object"
@@ -42,8 +46,10 @@ class WNetAligner:
             [t._cpp for t in theoretical_spectra],
             distance.value,
             float(max_distance),
-            float(trash_cost),
+            float(trash_cost) if trash_cost is not None else -1.0,
             float(scale_factor) if scale_factor is not None else 0.0,
+            float(experimental_trash_cost) if experimental_trash_cost is not None else -1.0,
+            float(theoretical_trash_cost)  if theoretical_trash_cost  is not None else -1.0,
         )
         self.scale_factor = self._cpp.scale_factor()
         self.point = None
