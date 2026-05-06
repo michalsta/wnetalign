@@ -17,6 +17,8 @@ def _get_cpp_aligner_class(dim: int):
 _SOLVER_METHODS = {
     "network_simplex": SolverMethod.NetworkSimplex,
     "cycle_canceling": SolverMethod.CycleCanceling,
+    "cost_scaling": SolverMethod.CostScaling,
+    "capacity_scaling": SolverMethod.CapacityScaling,
 }
 
 
