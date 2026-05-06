@@ -5,12 +5,19 @@ import numpy as np
 
 from wnet import Distribution
 from wnet.distances import DistanceMetric
+from wnet.wnet_cpp import SolverMethod
 from wnetalign import wnetalign_cpp
 from wnetalign.spectrum import Spectrum
 
 
 def _get_cpp_aligner_class(dim: int):
     return getattr(wnetalign_cpp, f"WNetAligner{dim}")
+
+
+_SOLVER_METHODS = {
+    "network_simplex": SolverMethod.NetworkSimplex,
+    "cycle_canceling": SolverMethod.CycleCanceling,
+}
 
 
 class WNetAligner:
@@ -29,9 +36,12 @@ class WNetAligner:
         scale_factor: Optional[Union[int, float]] = None,
         experimental_trash_cost: Optional[Union[int, float]] = None,
         theoretical_trash_cost: Optional[Union[int, float]] = None,
+        method: str = "network_simplex",
     ) -> None:
         if trash_cost is None and experimental_trash_cost is None and theoretical_trash_cost is None:
             raise ValueError("At least one of trash_cost, experimental_trash_cost, or theoretical_trash_cost must be provided.")
+        if method not in _SOLVER_METHODS:
+            raise ValueError(f"Unknown method {method!r}. Choose from: {list(_SOLVER_METHODS)}")
 
         assert hasattr(
             empirical_spectrum, "_cpp"
@@ -50,6 +60,7 @@ class WNetAligner:
             float(scale_factor) if scale_factor is not None else 0.0,
             float(experimental_trash_cost) if experimental_trash_cost is not None else -1.0,
             float(theoretical_trash_cost)  if theoretical_trash_cost  is not None else -1.0,
+            _SOLVER_METHODS[method],
         )
         self.scale_factor = self._cpp.scale_factor()
         self.point = None

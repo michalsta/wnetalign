@@ -83,7 +83,8 @@ class WNetAligner {
         double trash_cost,
         double scale_factor,
         double experimental_trash_cost,
-        double theoretical_trash_cost)
+        double theoretical_trash_cost,
+        SolverMethod method)
     {
         if (theoretical.empty())
             throw std::invalid_argument("Need at least one theoretical spectrum");
@@ -121,7 +122,7 @@ class WNetAligner {
         } else {
             network.add_simple_trash(static_cast<int64_t>(trash_cost * scale_factor));
         }
-        network.build();
+        network.build(method);
         return network;
     }
 
@@ -150,10 +151,11 @@ public:
         double trash_cost = -1.0,
         double scale_factor = 0,
         double experimental_trash_cost = -1.0,
-        double theoretical_trash_cost  = -1.0
+        double theoretical_trash_cost  = -1.0,
+        SolverMethod method = SolverMethod::NetworkSimplex
     ) : scale_factor_(resolve_scale_factor(empirical, theoretical, trash_cost, scale_factor, experimental_trash_cost, theoretical_trash_cost)),
         no_theoretical_(theoretical.size()),
-        network_(build_network(empirical, theoretical, distance, max_distance, trash_cost, scale_factor_, experimental_trash_cost, theoretical_trash_cost))
+        network_(build_network(empirical, theoretical, distance, max_distance, trash_cost, scale_factor_, experimental_trash_cost, theoretical_trash_cost, method))
     {}
 
     void set_point(const std::vector<double>& point) {
