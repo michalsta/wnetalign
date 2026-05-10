@@ -72,9 +72,7 @@ class WNetAligner:
         Set proportions of theoretical spectra and solve the graph at the given point.
         """
         self.point = point
-        self._cpp.set_point(
-            list(point) if isinstance(point, np.ndarray) else list(point)
-        )
+        self._cpp.set_point(list(point))
 
     def total_cost(self) -> float:
         """
