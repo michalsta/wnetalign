@@ -5,7 +5,12 @@ import numpy as np
 
 from wnet import Distribution
 from wnet.distances import DistanceMetric
-from wnet.wnet_cpp import SolverMethod
+from wnet.wnet_cpp import (
+    NetworkSimplex,
+    CostScaling,
+    CycleCanceling,
+    CapacityScaling,
+)
 from wnetalign import wnetalign_cpp
 from wnetalign.spectrum import Spectrum
 
@@ -15,10 +20,10 @@ def _get_cpp_aligner_class(dim: int):
 
 
 _SOLVER_METHODS = {
-    "network_simplex": SolverMethod.NetworkSimplex,
-    "cycle_canceling": SolverMethod.CycleCanceling,
-    "cost_scaling": SolverMethod.CostScaling,
-    "capacity_scaling": SolverMethod.CapacityScaling,
+    "network_simplex": NetworkSimplex,
+    "cycle_canceling": CycleCanceling,
+    "cost_scaling": CostScaling,
+    "capacity_scaling": CapacityScaling,
 }
 
 
@@ -26,6 +31,16 @@ class WNetAligner:
     """
     Aligns an empirical spectrum to one or more theoretical spectra using a Wasserstein network approach.
     Thin wrapper around the C++ WNetAligner<DIM> class.
+
+    Parameters
+    ----------
+    solver : NetworkSimplex | CostScaling | CycleCanceling | CapacityScaling, optional
+        Solver configuration object.  Takes precedence over ``method`` when both are given.
+        Defaults to ``NetworkSimplex()`` (warm restarts, BLOCK_SEARCH pivot).
+    method : str, optional
+        Min-cost flow algorithm as a string: ``"network_simplex"`` (default),
+        ``"cycle_canceling"``, ``"cost_scaling"``, or ``"capacity_scaling"``.
+        Ignored when ``solver`` is provided.
     """
 
     def __init__(
@@ -38,12 +53,18 @@ class WNetAligner:
         scale_factor: Optional[Union[int, float]] = None,
         experimental_trash_cost: Optional[Union[int, float]] = None,
         theoretical_trash_cost: Optional[Union[int, float]] = None,
-        method: str = "network_simplex",
+        method: str = None,
+        solver=None,
     ) -> None:
         if trash_cost is None and experimental_trash_cost is None and theoretical_trash_cost is None:
             raise ValueError("At least one of trash_cost, experimental_trash_cost, or theoretical_trash_cost must be provided.")
-        if method not in _SOLVER_METHODS:
-            raise ValueError(f"Unknown method {method!r}. Choose from: {list(_SOLVER_METHODS)}")
+
+        if solver is None and method is None:
+            solver = NetworkSimplex()
+        elif solver is None:
+            if method not in _SOLVER_METHODS:
+                raise ValueError(f"Unknown method {method!r}. Choose from: {list(_SOLVER_METHODS)}")
+            solver = _SOLVER_METHODS[method]()
 
         assert hasattr(
             empirical_spectrum, "_cpp"
@@ -62,7 +83,7 @@ class WNetAligner:
             float(scale_factor) if scale_factor is not None else 0.0,
             float(experimental_trash_cost) if experimental_trash_cost is not None else -1.0,
             float(theoretical_trash_cost)  if theoretical_trash_cost  is not None else -1.0,
-            _SOLVER_METHODS[method],
+            solver,
         )
         self.scale_factor = self._cpp.scale_factor()
         self.point = None

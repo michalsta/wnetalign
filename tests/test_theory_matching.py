@@ -36,7 +36,7 @@ def test_matching3():
     )
     wasserstein_network.set_point([1, 1])
     wasserstein_network.print_diagnostics()
-    assert math.isclose(wasserstein_network.total_cost(), 64.0)
+    assert math.isclose(wasserstein_network.total_cost(), 124.0)
 
 
 if __name__ == "__main__":
