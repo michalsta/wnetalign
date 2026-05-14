@@ -155,7 +155,12 @@ def Spectrum_1D(
         positions = np.array(positions)
     if not isinstance(intensities, np.ndarray):
         intensities = np.array(intensities)
-    assert len(positions.shape) == 1
-    assert len(intensities.shape) == 1
-    assert positions.shape[0] == intensities.shape[0]
+    if positions.ndim != 1:
+        raise ValueError(f"positions must be 1D, got shape {positions.shape}")
+    if intensities.ndim != 1:
+        raise ValueError(f"intensities must be 1D, got shape {intensities.shape}")
+    if positions.shape[0] != intensities.shape[0]:
+        raise ValueError(
+            f"positions and intensities must have the same length, got {positions.shape[0]} and {intensities.shape[0]}"
+        )
     return Spectrum(positions[np.newaxis, :], intensities, label=label)

@@ -19,6 +19,8 @@ def _get_cpp_aligner_class(dim: int):
     return getattr(wnetalign_cpp, f"WNetAligner{dim}")
 
 
+_Flow = namedtuple("Flow", ["empirical_peak_idx", "theoretical_peak_idx", "flow"])
+
 _SOLVER_METHODS = {
     "network_simplex": NetworkSimplex,
     "cycle_canceling": CycleCanceling,
@@ -66,12 +68,10 @@ class WNetAligner:
                 raise ValueError(f"Unknown method {method!r}. Choose from: {list(_SOLVER_METHODS)}")
             solver = _SOLVER_METHODS[method]()
 
-        assert hasattr(
-            empirical_spectrum, "_cpp"
-        ), "empirical_spectrum must be a Spectrum with a C++ backing object"
-        assert all(
-            hasattr(t, "_cpp") for t in theoretical_spectra
-        ), "all theoretical spectra must have C++ backing objects"
+        if not hasattr(empirical_spectrum, "_cpp"):
+            raise TypeError("empirical_spectrum must be a Spectrum with a C++ backing object")
+        if not all(hasattr(t, "_cpp") for t in theoretical_spectra):
+            raise TypeError("all theoretical spectra must have C++ backing objects")
 
         cpp_cls = _get_cpp_aligner_class(empirical_spectrum.positions.shape[0])
         self._cpp = cpp_cls(
@@ -107,7 +107,7 @@ class WNetAligner:
         """
         print(str(self._cpp))
 
-    def flows(self) -> list[namedtuple]:
+    def flows(self) -> list[_Flow]:
         """
         Returns a list of Flow namedtuples for each theoretical spectrum.
         """
@@ -116,11 +116,7 @@ class WNetAligner:
             empirical_peak_idx, theoretical_peak_idx, flow = self._cpp.flows_for_target(
                 i
             )
-            result.append(
-                namedtuple(
-                    "Flow", ["empirical_peak_idx", "theoretical_peak_idx", "flow"]
-                )(empirical_peak_idx, theoretical_peak_idx, flow / self.scale_factor)
-            )
+            result.append(_Flow(empirical_peak_idx, theoretical_peak_idx, flow / self.scale_factor))
         return result
 
     def consensus(self, target_id: int = 0):
