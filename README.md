@@ -16,11 +16,37 @@ pip install wnetalign
 
 ## Usage
 
-Usage examples can be found in the `tutorials` directory, both for LCMS and NMR datasets. 
+```python
+import numpy as np
+from wnetalign import Spectrum, WNetAligner
+from wnet.distances import DistanceMetric
 
-## Tutorials 
+# positions shape: (dim, num_peaks); intensities shape: (num_peaks,)
+S1 = Spectrum(positions=np.array([[1.0, 2.5, 4.0]]), intensities=np.array([1.0, 3.0, 2.0]))
+S2 = Spectrum(positions=np.array([[1.1, 2.4, 4.2]]), intensities=np.array([1.0, 2.5, 2.5]))
 
-Tutorials showing how to apply `wnetalign` to nmr data can be found in `tutorials/nmr` folder, while the example how to perform alignment of th LC-MS data can be found in `tutorials/lcms`. 
+S1 = S1.normalized()
+S2 = S2.normalized()
+
+aligner = WNetAligner(
+    empirical_spectrum=S1,
+    theoretical_spectra=[S2],
+    distance=DistanceMetric.L2,
+    max_distance=0.5,
+    trash_cost=0.9,
+)
+aligner.set_point([1])
+
+print("Total cost:", aligner.total_cost())
+flows = aligner.flows()[0]        # Flow(empirical_peak_idx, theoretical_peak_idx, flow)
+emp_ids, theo_ids = aligner.consensus()  # greedy 1-to-1 pairs
+```
+
+For more complete examples see the `tutorials` directory.
+
+## Tutorials
+
+Tutorials showing how to apply `wnetalign` to NMR data can be found in `tutorials/nmr`, while an example of LC-MS alignment can be found in `tutorials/lcms`.
 
 ## Results from publication
 
@@ -28,11 +54,11 @@ To reproduce the results and figures from the paper *"WNetAlign: Fast and Accura
 
 #### 2D NMR data
 
-The 2D 15N-1H HSQC spectra are available in `publication/nmr/2D/15_HSQC_GB1_reduced` folder. 
+The 2D 15N-1H HSQC spectra are available in `publication/nmr/2D/15N_HSQC_GB1_reduced` folder.
 
 * `NMR_2D_original.ipynb` - plotting data distribution, chain alignment of the series of 15N-1H HSQC spectra measured in different temperatures
 * `NMR_2D_simulated.ipynb` - simulating synthetic temperature series, validation of alignment procedure using standard and extended metrics, heatmaps
-* `NMR_2D_seeds.ipynb` - performing alignments for the synthetic temperature series with different random seeds 
+* `NMR_2D_seeds.ipynb` - performing alignments for the synthetic temperature series with different random seeds
 
 #### 4D NMR data
 
