@@ -4,20 +4,37 @@ on:
     push:
         branches:
             - ci_test
+            - testing
             - main
         tags:
             - 'v*'
 
 jobs:
   run_pytest:
-    name: ${{ matrix.compiler == 'clang' && format('[clang] {0}', matrix.os) || format('{0} / py{1}', matrix.os, matrix.python-version) }}
-    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.compiler == 'clang' && format('[clang] {0} / py{1}', matrix.os, matrix.python-version) || format('{0} / py{1}', matrix.os, matrix.python-version) }}
+    if: github.ref != 'refs/heads/main'
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
     strategy:
       matrix:
-        # macos-13 is an intel runner, macos-14 is apple silicon
-        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15-intel, macos-latest, windows-11-arm]
+        os: [linux-amd64, linux-arm64, windows-latest, macos-15-intel, macos-latest, windows-11-arm]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         compiler: [default, clang]
+        include:
+        - os: linux-amd64
+          runner: [self-hosted, wloczykij-amd64]
+          container: localhost:5000/ubuntu-ci:24.04
+        - os: linux-arm64
+          runner: [self-hosted, wloczykij-arm64]
+          container: localhost:5000/ubuntu-ci:24.04
+        - os: windows-latest
+          runner: windows-latest
+        - os: macos-15-intel
+          runner: macos-15-intel
+        - os: macos-latest
+          runner: macos-latest
+        - os: windows-11-arm
+          runner: windows-11-arm
         exclude:
         - os: windows-11-arm
           python-version: "3.10"
@@ -32,7 +49,27 @@ jobs:
           compiler: clang
         - os: macos-15-intel
           compiler: clang
-
+        # mac: only newest Python
+        - os: macos-latest
+          python-version: "3.9"
+        - os: macos-latest
+          python-version: "3.10"
+        - os: macos-latest
+          python-version: "3.11"
+        - os: macos-latest
+          python-version: "3.12"
+        - os: macos-latest
+          python-version: "3.13"
+        - os: macos-15-intel
+          python-version: "3.9"
+        - os: macos-15-intel
+          python-version: "3.10"
+        - os: macos-15-intel
+          python-version: "3.11"
+        - os: macos-15-intel
+          python-version: "3.12"
+        - os: macos-15-intel
+          python-version: "3.13"
 
     steps:
       - uses: actions/checkout@v5
@@ -40,13 +77,14 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
       - name: "Non-default compiler: set up Clang"
         if: matrix.compiler == 'clang'
         run: |
-          sudo apt-get install -y clang
           echo "CC=clang" >> $GITHUB_ENV
           echo "CXX=clang++" >> $GITHUB_ENV
           echo "CMAKE_ARGS=-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++" >> $GITHUB_ENV
@@ -60,3 +98,78 @@ jobs:
         run: |
           python -m pytest .
 
+  run_pytest_main:
+    name: ${{ matrix.compiler == 'clang' && format('[clang] {0} / py{1}', matrix.os, matrix.python-version) || format('{0} / py{1}', matrix.os, matrix.python-version) }}
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    strategy:
+      matrix:
+        os: [linux-amd64, linux-arm64, windows-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        compiler: [default, clang]
+        include:
+        - os: linux-amd64
+          runner: [self-hosted, wloczykij-amd64]
+          container: localhost:5000/ubuntu-ci:24.04
+        - os: linux-arm64
+          runner: [self-hosted, wloczykij-arm64]
+          container: localhost:5000/ubuntu-ci:24.04
+        - os: windows-latest
+          runner: windows-latest
+        - os: macos-latest
+          runner: macos-latest
+        exclude:
+        # On main, only run 3.14 for Windows/macOS
+        - os: windows-latest
+          python-version: "3.9"
+        - os: windows-latest
+          python-version: "3.10"
+        - os: windows-latest
+          python-version: "3.11"
+        - os: windows-latest
+          python-version: "3.12"
+        - os: windows-latest
+          python-version: "3.13"
+        - os: macos-latest
+          python-version: "3.9"
+        - os: macos-latest
+          python-version: "3.10"
+        - os: macos-latest
+          python-version: "3.11"
+        - os: macos-latest
+          python-version: "3.12"
+        - os: macos-latest
+          python-version: "3.13"
+        # No clang on Windows/macOS
+        - os: windows-latest
+          compiler: clang
+        - os: macos-latest
+          compiler: clang
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+      - name: "Non-default compiler: set up Clang"
+        if: matrix.compiler == 'clang'
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+          echo "CMAKE_ARGS=-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++" >> $GITHUB_ENV
+      - name: Install package
+        env:
+          VERBOSE: '1'
+        run: |
+          python -m pip install -v .[pytest]
+      - name: Test with pytest
+        working-directory: ./tests
+        run: |
+          python -m pytest .
