@@ -28,6 +28,9 @@ requires-python = ">=3.9"
 extras = ["pyopenms"]
 pytest = ["pytest", "pandas", "numpy"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.scikit-build.sdist]
 exclude = ["**/*"]
 include = [
