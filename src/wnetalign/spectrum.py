@@ -3,52 +3,19 @@ from typing import Optional
 import numpy as np
 
 from wnet import Distribution
-from wnetalign import wnetalign_cpp
-
-
-def _get_cpp_spectrum_class(dim: int):
-    return getattr(wnetalign_cpp, f"Spectrum{dim}")
 
 
 class Spectrum(Distribution):
     """
     A class representing NMR or MS spectrum data.
-    Thin wrapper around the C++ Spectrum<DIM> class.
 
-    The scaling/normalization helpers (``scaled``,
-    ``positions_intensities_scaled``, ``normalized``, ``as_distribution``,
-    ``sum_intensities``) are inherited from Distribution, whose polymorphic
-    constructor returns a Spectrum here (rebuilding the C++ backing object via
-    ``__init__``).
+    A thin subclass of Distribution backed by wnet's C++ distribution object
+    (``vecdist``, a ``CVectorDistributionFloat{DIM}`` with real double
+    intensities) — the same object any wnet Distribution uses.  The aligner
+    quantizes those real intensities to integer supplies internally; all
+    scaling/normalization helpers are inherited.  The only addition is the
+    MS-specific ``FromFeatureXML``.
     """
-
-    def __init__(
-        self,
-        positions: np.ndarray,
-        intensities: np.ndarray,
-        label: Optional[str] = None,
-    ):
-        """
-        Initialize a Spectrum object.  Retains the original (non-int)
-        intensities in ``original_intensities``; they are converted to int
-        before running any alignment algorithms.
-
-        Parameters
-        ----------
-        positions : np.ndarray
-            The spatial coordinates of the spectrum (e.g., m/z and RT for MS).
-            Shape: (dim, num_points)
-        intensities : np.ndarray
-            The intensity values corresponding to the spatial coordinates.
-        """
-        super().__init__(positions, intensities, label=label)
-        dimension = positions.shape[0]
-        cpp_cls = _get_cpp_spectrum_class(dimension)
-        self._cpp = cpp_cls(
-            positions.astype(np.float64),
-            intensities.astype(np.float64),
-        )
-        self.original_intensities = intensities
 
     @staticmethod
     def FromFeatureXML(path):
@@ -72,13 +39,6 @@ class Spectrum(Distribution):
         # create a Spectrum object
         spectrum = Spectrum(np.array([mzs, rts]), np.array(intensities))
         return spectrum
-
-    def to_vector_distribution(self):
-        """
-        Return the C++ CVectorDistribution (int64 intensities) directly
-        from the underlying C++ Spectrum.
-        """
-        return self._cpp.to_vector_distribution()
 
 
 def Spectrum_1D(

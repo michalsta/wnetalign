@@ -7,19 +7,10 @@
 
 #include "aligner.hpp"
 
-#define EXPOSE_SPECTRUM(DIM) \
-    using Spectrum_##DIM = Spectrum<DIM>; \
-    nb::class_<Spectrum_##DIM>(m, "Spectrum" #DIM) \
-        .def(nb::init<const nb::ndarray<double, nb::shape<DIM, -1>> &, const nb::ndarray<double, nb::shape<-1>> &>()) \
-        .def(nb::init<const nb::ndarray<double, nb::shape<-1, -1>> &, const nb::ndarray<double, nb::shape<-1>> &>()) \
-        .def("sum_intensities", &Spectrum_##DIM::sum_intensities) \
-        .def("scaled", &Spectrum_##DIM::scaled) \
-        .def("normalized", &Spectrum_##DIM::normalized) \
-        .def("to_vector_distribution", &Spectrum_##DIM::to_vector_distribution) \
-        .def("size", &Spectrum_##DIM::size) \
-        .def("__len__", &Spectrum_##DIM::size) \
-        .def("py_get_positions", &Spectrum_##DIM::py_get_positions) \
-        .def("py_get_intensities", &Spectrum_##DIM::py_get_intensities);
+// Spectrum<DIM> is now an alias for wnet's VectorDistribution<DIM,double,double>
+// (bound by the wnet module as CVectorDistributionFloat{DIM}); it is not
+// re-registered here.  The aligner accepts those objects directly (passed from
+// Python as a Distribution/Spectrum's `vecdist`).
 
 #define EXPOSE_ALIGNER(DIM) \
     using WNetAligner_##DIM = WNetAligner<DIM>; \
@@ -78,27 +69,6 @@ NB_MODULE(wnetalign_cpp, m) {
     m.def("wnetalign_cpp_hello", []() {
         std::cout << "Hello from WNetAlign (C++)!" << std::endl;
     }, "A simple hello world function for the WNetAlign (C++) extension");
-
-    EXPOSE_SPECTRUM(1)
-    EXPOSE_SPECTRUM(2)
-    EXPOSE_SPECTRUM(3)
-    EXPOSE_SPECTRUM(4)
-    EXPOSE_SPECTRUM(5)
-    EXPOSE_SPECTRUM(6)
-    EXPOSE_SPECTRUM(7)
-    EXPOSE_SPECTRUM(8)
-    EXPOSE_SPECTRUM(9)
-    EXPOSE_SPECTRUM(10)
-    EXPOSE_SPECTRUM(11)
-    EXPOSE_SPECTRUM(12)
-    EXPOSE_SPECTRUM(13)
-    EXPOSE_SPECTRUM(14)
-    EXPOSE_SPECTRUM(15)
-    EXPOSE_SPECTRUM(16)
-    EXPOSE_SPECTRUM(17)
-    EXPOSE_SPECTRUM(18)
-    EXPOSE_SPECTRUM(19)
-    EXPOSE_SPECTRUM(20)
 
     EXPOSE_ALIGNER(1)
     EXPOSE_ALIGNER(2)

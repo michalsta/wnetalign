@@ -15,11 +15,14 @@
 
 template<size_t DIM>
 class WNetAligner {
-    using VecDist = VectorDistribution<DIM, double, int64_t>;
+    // Real (double) intensities now: positions are scaled by scale_factor for
+    // distance resolution, but intensities pass through untouched and are
+    // quantized to integer supplies inside the network via set_intensity_scale.
+    using VecDist = VectorDistribution<DIM, double, double>;
 
     double scale_factor_;
     size_t no_theoretical_;
-    WassersteinNetwork<int64_t, int64_t> network_;
+    WassersteinNetwork<int64_t, double> network_;
 
     static VecDist scale_spectrum(const Spectrum<DIM>& spectrum, double scale_factor) {
         auto positions = spectrum.get_positions();
@@ -28,13 +31,9 @@ class WNetAligner {
                 p *= scale_factor;
             }
         }
-        const auto& intensities = spectrum.get_intensities();
-        std::vector<int64_t> int_intensities;
-        int_intensities.reserve(intensities.size());
-        for (double intensity : intensities) {
-            int_intensities.push_back(static_cast<int64_t>(intensity * scale_factor));
-        }
-        return VecDist(std::move(positions), std::move(int_intensities));
+        // Intensities kept real; the network applies the intensity scale.
+        std::vector<double> intensities = spectrum.get_intensities();
+        return VecDist(std::move(positions), std::move(intensities));
     }
 
     static double compute_scale_factor(
@@ -76,7 +75,7 @@ class WNetAligner {
         return std::sqrt(static_cast<double>(ALMOST_MAXINT) / product);
     }
 
-    static WassersteinNetwork<int64_t, int64_t> build_network(
+    static WassersteinNetwork<int64_t, double> build_network(
         const Spectrum<DIM>& empirical,
         const std::vector<Spectrum<DIM>*>& theoretical,
         DistanceMetric distance,
@@ -123,6 +122,12 @@ class WNetAligner {
         } else {
             network.add_simple_trash(static_cast<int64_t>(trash_cost * scale_factor));
         }
+        // Intensities were passed real; quantize them to integer supplies with
+        // the same factor used for positions, so total_cost stays in
+        // scale_factor**2 units (unchanged unscaling) but without the old
+        // pre-truncation of intensities (single quantization, inside the
+        // network, after the point weight is applied).
+        network.set_intensity_scale(scale_factor);
         network.build(config);
         return network;
     }
@@ -186,18 +191,18 @@ public:
     }
 
     size_t count_empirical_nodes() const {
-        return network_.template count_nodes_of_type<EmpiricalNode<int64_t>>();
+        return network_.template count_nodes_of_type<EmpiricalNode<double>>();
     }
 
     size_t count_theoretical_nodes() const {
-        return network_.template count_nodes_of_type<TheoreticalNode<int64_t>>();
+        return network_.template count_nodes_of_type<TheoreticalNode<double>>();
     }
 
     double matching_density() const {
         return network_.matching_density();
     }
 
-    const WassersteinNetworkSubgraph<int64_t, int64_t>& get_subgraph(size_t idx) const {
+    const WassersteinNetworkSubgraph<int64_t, double>& get_subgraph(size_t idx) const {
         return network_.get_subgraph(idx);
     }
 

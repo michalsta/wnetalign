@@ -91,18 +91,14 @@ int main(int argc, char* argv[]) {
     double scale_mz = max_rt_shift / max_mz_shift;
     int64_t mtd = static_cast<int64_t>(std::round(max_rt_shift));
 
-    // Scale m/z dimension
-    S1 = scale_mz_values(S1, scale_mz);
-    S2 = scale_mz_values(S2, scale_mz);
-
-    // Normalize
-    S1 = S1.normalized();
-    S2 = S2.normalized();
+    // Scale m/z dimension, then normalize (new objects: not move-assignable).
+    Spectrum<2> S1n = scale_mz_values(S1, scale_mz).normalized();
+    Spectrum<2> S2n = scale_mz_values(S2, scale_mz).normalized();
 
     std::cout << "Building aligner (LINF, max_dist=" << mtd << ", trash_cost=" << mtd << ")..." << std::endl;
 
-    std::vector<Spectrum<2>*> theoretical = {&S2};
-    WNetAligner<2> aligner(S1, theoretical, DistanceMetric::LINF, mtd, mtd);
+    std::vector<Spectrum<2>*> theoretical = {&S2n};
+    WNetAligner<2> aligner(S1n, theoretical, DistanceMetric::LINF, mtd, mtd);
 
     std::cout << "Solving..." << std::endl;
     aligner.set_point({1.0});

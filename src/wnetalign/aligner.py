@@ -68,15 +68,17 @@ class WNetAligner:
                 raise ValueError(f"Unknown method {method!r}. Choose from: {list(_SOLVER_METHODS)}")
             solver = _SOLVER_METHODS[method]()
 
-        if not hasattr(empirical_spectrum, "_cpp"):
-            raise TypeError("empirical_spectrum must be a Spectrum with a C++ backing object")
-        if not all(hasattr(t, "_cpp") for t in theoretical_spectra):
-            raise TypeError("all theoretical spectra must have C++ backing objects")
+        if not hasattr(empirical_spectrum, "vecdist"):
+            raise TypeError("empirical_spectrum must be a Distribution/Spectrum")
+        if not all(hasattr(t, "vecdist") for t in theoretical_spectra):
+            raise TypeError("all theoretical spectra must be Distributions/Spectra")
 
+        # Pass wnet's C++ distribution object (CVectorDistributionFloat{DIM});
+        # the aligner scales positions and quantizes intensities internally.
         cpp_cls = _get_cpp_aligner_class(empirical_spectrum.positions.shape[0])
         self._cpp = cpp_cls(
-            empirical_spectrum._cpp,
-            [t._cpp for t in theoretical_spectra],
+            empirical_spectrum.vecdist,
+            [t.vecdist for t in theoretical_spectra],
             distance.value,
             float(max_distance),
             float(trash_cost) if trash_cost is not None else -1.0,
