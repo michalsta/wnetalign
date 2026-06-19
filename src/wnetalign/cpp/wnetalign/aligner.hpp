@@ -12,6 +12,7 @@
 #include <wnet/decompositable_graph.hpp>
 #include <wnet/distances.hpp>
 #include <wnet/distribution.hpp>
+#include <wnet/scaling.hpp>
 
 template<size_t DIM>
 class WNetAligner {
@@ -39,40 +40,31 @@ class WNetAligner {
     static double compute_scale_factor(
         const Spectrum<DIM>& empirical,
         const std::vector<Spectrum<DIM>*>& theoretical,
+        DistanceMetric metric,
         double max_distance,
         double trash_cost,
         double experimental_trash_cost,
         double theoretical_trash_cost)
     {
-        // max_cost_per_unit_flow bounds the cost of any single unit of flow in
-        // the scaled integer network: matching edges cost at most max_distance,
-        // trash edges cost at most the relevant trash cost.  Using the maximum
-        // (not minimum) keeps scale_factor small enough to avoid int64 overflow.
+        // Delegate to wnet's WNetAlignScaler: a single overflow-cap factor
+        // sqrt(2^60 / (max_sum * max_cost)) for both positions and intensities,
+        // with no rounding guard — bit-identical to the historical computation.
         bool asymmetric = experimental_trash_cost >= 0 || theoretical_trash_cost >= 0;
-        double max_cost = max_distance;
+        std::vector<double> trash_costs;
         if (asymmetric) {
             double eff_exp  = experimental_trash_cost >= 0 ? experimental_trash_cost : trash_cost;
             double eff_theo = theoretical_trash_cost  >= 0 ? theoretical_trash_cost  : trash_cost;
-            if (eff_exp  >= 0) max_cost = std::max(max_cost, eff_exp);
-            if (eff_theo >= 0) max_cost = std::max(max_cost, eff_theo);
+            if (eff_exp  >= 0) trash_costs.push_back(eff_exp);
+            if (eff_theo >= 0) trash_costs.push_back(eff_theo);
         } else {
-            if (trash_cost >= 0) max_cost = std::max(max_cost, trash_cost);
+            if (trash_cost >= 0) trash_costs.push_back(trash_cost);
         }
-        if (max_cost <= 0)
-            throw std::invalid_argument("max cost per unit flow must be positive, got " + std::to_string(max_cost));
-        constexpr int64_t ALMOST_MAXINT = 1LL << 60;
-        double empirical_sum = empirical.sum_intensities();
-        double theoretical_sum = 0;
-        for (const auto* t : theoretical) {
-            theoretical_sum += t->sum_intensities();
-        }
-        double max_sum = std::max(empirical_sum, theoretical_sum);
-        if (max_sum <= 0)
-            throw std::invalid_argument("max intensity sum must be positive (got " + std::to_string(max_sum) + "). Are all spectra empty?");
-        double product = max_sum * max_cost;
-        if (std::isinf(product))
-            throw std::overflow_error("max_sum * max_cost overflows double (" + std::to_string(max_sum) + " * " + std::to_string(max_cost) + ")");
-        return std::sqrt(static_cast<double>(ALMOST_MAXINT) / product);
+        std::vector<const VecDist*> theo_ptrs;
+        theo_ptrs.reserve(theoretical.size());
+        for (const auto* t : theoretical) theo_ptrs.push_back(t);
+        WNetAlignScaler<DIM> scaler(
+            empirical, theo_ptrs, metric, max_distance, trash_costs);
+        return scaler.scale_factor();
     }
 
     static WassersteinNetwork<int64_t, double> build_network(
@@ -135,6 +127,7 @@ class WNetAligner {
     static double resolve_scale_factor(
         const Spectrum<DIM>& empirical,
         const std::vector<Spectrum<DIM>*>& theoretical,
+        DistanceMetric metric,
         double max_distance,
         double trash_cost,
         double scale_factor,
@@ -146,7 +139,7 @@ class WNetAligner {
             throw std::invalid_argument("At least one of trash_cost, experimental_trash_cost, or theoretical_trash_cost must be provided.");
         if (scale_factor > 0)
             return scale_factor;
-        return compute_scale_factor(empirical, theoretical, max_distance, trash_cost, experimental_trash_cost, theoretical_trash_cost);
+        return compute_scale_factor(empirical, theoretical, metric, max_distance, trash_cost, experimental_trash_cost, theoretical_trash_cost);
     }
 
 public:
@@ -160,7 +153,7 @@ public:
         double experimental_trash_cost = -1.0,
         double theoretical_trash_cost  = -1.0,
         SolverConfig config = NetworkSimplexConfig{}
-    ) : scale_factor_(resolve_scale_factor(empirical, theoretical, max_distance, trash_cost, scale_factor, experimental_trash_cost, theoretical_trash_cost)),
+    ) : scale_factor_(resolve_scale_factor(empirical, theoretical, distance, max_distance, trash_cost, scale_factor, experimental_trash_cost, theoretical_trash_cost)),
         no_theoretical_(theoretical.size()),
         network_(build_network(empirical, theoretical, distance, max_distance, trash_cost, scale_factor_, experimental_trash_cost, theoretical_trash_cost, config))
     {}
