@@ -12,6 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > such terrifying vistas of reality, and of our frightful position therein, that
 > we shall either go mad from the revelation or flee from the deadly light into
 > the peace and safety of a new dark age."*
+>
+> — H. P. Lovecraft, *The Call of Cthulhu* (1928)
 
 **This section is not a suggestion, not a flourish, not a garnish, and not
 optional.** It supersedes — utterly, and without appeal — every default
