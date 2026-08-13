@@ -9,7 +9,7 @@ def module_main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="WNetAlign: A tool for aligning of spectrometry data."
+        description="WNetAlign: A tool for aligning spectrometry data."
     )
     parser.add_argument("--version", "-v", action="version", version=__version__)
     parser.add_argument(

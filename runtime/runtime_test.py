@@ -149,7 +149,7 @@ def align_spectra(S1: Spectrum,
     else:
         return results
 
-def test_align_spectra(n):
+def run_align_benchmark(n):
     from pathlib import Path
 
     datadir = Path(__file__).parent.parent / 'tutorials' / 'lcms' / 'data'
@@ -176,4 +176,4 @@ if __name__ == "__main__":
     parser.add_argument('n', type=int, help='The number of times to expand the spectra.')
     args = parser.parse_args()
 
-    test_align_spectra(args.n)
+    run_align_benchmark(args.n)

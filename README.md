@@ -50,7 +50,7 @@ Tutorials showing how to apply `wnetalign` to NMR data can be found in `tutorial
 
 ## Results from publication
 
-To reproduce the results and figures from the paper *"WNetAlign: Fast and Accurate Spectra Alignment Using Truncated Wasserstein Distance and Network Simplex"* use the scripts and notebooks provided in the `publication/nmr` folder for NMR data and `publication/lcms` for LC-MS data.
+To reproduce the results and figures from the paper *"WNetAlign: Fast and Accurate Spectra Alignment Using Truncated Wasserstein Distance and Network Simplex"* use the scripts and notebooks provided in the `publication/nmr` folder for NMR data; for an LC-MS alignment example see `tutorials/lcms`.
 
 #### 2D NMR data
 

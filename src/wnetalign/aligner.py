@@ -3,7 +3,6 @@ from collections.abc import Sequence
 from typing import Optional, Union
 import numpy as np
 
-from wnet import Distribution
 from wnet.distances import DistanceMetric
 from wnet.wnet_cpp import (
     NetworkSimplex,
@@ -55,7 +54,7 @@ class WNetAligner:
         scale_factor: Optional[Union[int, float]] = None,
         experimental_trash_cost: Optional[Union[int, float]] = None,
         theoretical_trash_cost: Optional[Union[int, float]] = None,
-        method: str = None,
+        method: Optional[str] = None,
         solver=None,
     ) -> None:
         if trash_cost is None and experimental_trash_cost is None and theoretical_trash_cost is None:
