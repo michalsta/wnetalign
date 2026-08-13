@@ -1,18 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
 
-execute_process(
-   COMMAND python -m pylmcf --include
-   OUTPUT_VARIABLE PYLMCF_INCLUDE_DIRS
-   OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-execute_process(
-   COMMAND python -m wnet --include
-   OUTPUT_VARIABLE WNET_INCLUDE_DIRS
-   OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-
 if(APPLE)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum macOS deployment version")
 endif()
@@ -22,6 +9,26 @@ find_package(Python 3.8
   REQUIRED COMPONENTS Interpreter Development.Module
   OPTIONAL_COMPONENTS Development.SABIModule)
 find_package(nanobind REQUIRED CONFIG)
+
+execute_process(
+   COMMAND ${Python_EXECUTABLE} -m pylmcf --include
+   OUTPUT_VARIABLE PYLMCF_INCLUDE_DIRS
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+   RESULT_VARIABLE PYLMCF_INCLUDE_RESULT
+)
+if(NOT PYLMCF_INCLUDE_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to get include path from pylmcf (is it installed for ${Python_EXECUTABLE}?)")
+endif()
+
+execute_process(
+   COMMAND ${Python_EXECUTABLE} -m wnet --include
+   OUTPUT_VARIABLE WNET_INCLUDE_DIRS
+   OUTPUT_STRIP_TRAILING_WHITESPACE
+   RESULT_VARIABLE WNET_INCLUDE_RESULT
+)
+if(NOT WNET_INCLUDE_RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to get include path from wnet (is it installed for ${Python_EXECUTABLE}?)")
+endif()
 
 
 set(CMAKE_CXX_STANDARD 20)

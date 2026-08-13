@@ -212,10 +212,12 @@ public:
         auto& emp_ids = std::get<0>(flow_result);
         auto& theo_ids = std::get<1>(flow_result);
         auto& flows = std::get<2>(flow_result);
-        // Sort indices by flow descending
+        // Sort indices by flow descending; stable so that ties between equal
+        // flows resolve by original index order, deterministically across
+        // platforms and standard library implementations.
         std::vector<size_t> order(emp_ids.size());
         std::iota(order.begin(), order.end(), 0);
-        std::sort(order.begin(), order.end(), [&flows](size_t a, size_t b) {
+        std::stable_sort(order.begin(), order.end(), [&flows](size_t a, size_t b) {
             return flows[a] > flows[b];
         });
         std::unordered_set<LEMON_INDEX> used_emp, used_theo;
