@@ -74,8 +74,45 @@ jobs:
           name: cibw-sdist
           path: dist/*.tar.gz
 
+  wait_for_tests:
+    # Cross-workflow gate: run_tests.yml also triggers on v* tags, but GitHub
+    # Actions has no direct dependency between workflows, so poll the API for
+    # the test run on this commit and mirror its conclusion. Fails (blocking
+    # upload_pypi) if the tests fail, never appear, or exceed the timeout.
+    name: Wait for test suite
+    if: github.repository_owner == 'michalsta' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Wait for run_tests.yml to succeed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          while true; do
+            run="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/run_tests.yml/runs?head_sha=${GITHUB_SHA}&per_page=1" \
+                   --jq '.workflow_runs[0] // empty | "\(.status) \(.conclusion) \(.html_url)"')"
+            if [ -z "$run" ]; then
+              echo "No test workflow run found yet for ${GITHUB_SHA}; waiting..."
+            else
+              status="${run%% *}"
+              rest="${run#* }"
+              conclusion="${rest%% *}"
+              url="${rest#* }"
+              echo "Test run: status=${status} conclusion=${conclusion} ${url}"
+              if [ "${status}" = "completed" ]; then
+                if [ "${conclusion}" = "success" ]; then
+                  exit 0
+                fi
+                echo "Test workflow concluded with '${conclusion}'; refusing to publish." >&2
+                exit 1
+              fi
+            fi
+            sleep 60
+          done
+
   upload_pypi:
-    needs: [build_wheels, build_sdist]
+    needs: [build_wheels, build_sdist, wait_for_tests]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
