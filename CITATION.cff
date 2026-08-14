@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: WNetAlign
-version: 0.9.9
+version: 1.0.0
 repository-code: "https://github.com/michalsta/wnetalign"
 license: MIT
 authors:
