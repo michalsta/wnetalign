@@ -92,10 +92,9 @@ def align_all(DATA_PATH = "./15N_HSQC_GB1_reduced",
 
     spectra = load_spectra(DATA_PATH, dim=dim, scale_nucl=scale_nucl, max_peak_fraction=max_peak_fraction, intensity_threshold=intensity_threshold)
 
-    if permute: spectra = permutations(spectra, 2)
-    else: spectra = combinations(spectra, 2)
-
     if temp_series: spectra = zip(spectra[:-1], spectra[1:])
+    elif permute: spectra = permutations(spectra, 2)
+    else: spectra = combinations(spectra, 2)
 
     solvers, results = [], []
 

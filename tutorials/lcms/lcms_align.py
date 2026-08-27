@@ -79,9 +79,8 @@ def align_spectra(S1: Spectrum,
     elif order == 2:
         dist = DistanceMetric.L2
     else:
-        dist = DistanceMetric.LINF
-        raise ValueError('Unsupported order. Use np.inf, 1, or 2. Setting order to np.inf.')
-    
+        raise ValueError('Unsupported order for distance metric. Use np.inf, 1, or 2.')
+
 
     # calculate the transport plan
     results = Solver(
