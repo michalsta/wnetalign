@@ -1,5 +1,12 @@
 [build-system]
-requires = ["scikit-build-core", "nanobind", "pylmcf", "wnet>=1.2.0"]
+# nanobind pin: wnetalign's extension shares nanobind-registered types (e.g.
+# NetworkSimplexConfig, CVectorDistributionFloat*) with the wnet and pylmcf
+# extensions. Type sharing works only when all three are built against the same
+# nanobind internals ABI version. The published wnet/pylmcf wheels are ABI v20,
+# which nanobind 2.13.x and 2.14.x produce (2.12 is v19, 2.15 is v21, 3.0 is v22).
+# Building against a mismatched nanobind yields "ImportError: std::bad_cast" at
+# import. Bump this range in lockstep with the wnet/pylmcf wheels.
+requires = ["scikit-build-core", "nanobind>=2.13,<2.15", "pylmcf", "wnet>=1.2.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
