@@ -1,19 +1,19 @@
 [build-system]
-# nanobind pin: wnetalign's extension shares nanobind-registered types (e.g.
-# NetworkSimplexConfig, CVectorDistributionFloat*) with the wnet and pylmcf
-# extensions. Type sharing works only when all three are built against the same
-# nanobind internals ABI version. The published wnet/pylmcf wheels are ABI v20,
-# which nanobind 2.13.x and 2.14.x produce (2.12 is v19, 2.15 is v21, 3.0 is v22).
-# Building against a mismatched nanobind yields "ImportError: std::bad_cast" at
-# import. Bump this range in lockstep with the wnet/pylmcf wheels.
-requires = ["scikit-build-core", "nanobind>=2.13,<2.15", "pylmcf", "wnet>=1.2.0"]
+# wnetalign's extension shares nanobind-registered types (e.g. NetworkSimplexConfig,
+# CVectorDistributionFloat*) with the wnet and pylmcf extensions. That used to
+# require pinning all three to one nanobind internals-ABI version by hand, with a
+# mismatch showing up as "ImportError: std::bad_cast" at import. Since nanobind 3
+# these extensions are built in split mode and share a single `nanobind_backend`
+# module, which gives them full mutual visibility of each other's type bindings
+# regardless of which nanobind each was compiled against. Hence no upper bound.
+requires = ["scikit-build-core", "nanobind>=3.0.1", "pylmcf>=1.2.0", "wnet>=1.5.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
 name = "wnetalign"
-version = "1.0.0"
+version = "1.1.0"
 description = "Python implementation of spectral alignment using Wasserstein metric"
-dependencies = ["pylmcf", "wnet>=1.2.0", "numpy"]
+dependencies = ["pylmcf>=1.2.0", "wnet>=1.5.0", "numpy", "nanobind-backend>=1.0; implementation_name == 'cpython'"]
 authors = [{ name="Michał Startek", email="michal.startek@mimuw.edu.pl" }]
 maintainers = [{ name="Michał Startek", email="michal.startek@mimuw.edu.pl" }]
 readme = "README.md"
@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Development Status :: 5 - Production/Stable",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [project.urls]
 "Homepage" = "https://github.com/michalsta/wnetalign"
@@ -38,17 +38,30 @@ pytest = ["pytest", "pandas", "numpy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.scikit-build]
+# Split-mode extensions are stable-ABI builds. Declaring the target here gets the
+# wheel an `abi3` tag, and nanobind reads it back as SKBUILD_SABI_VERSION to set
+# the stable ABI floor, so the two can never drift apart. One wheel per platform
+# then covers every Python from 3.10 up. Ignored automatically on PyPy and on
+# free-threaded interpreters, which is exactly when CMake falls back to a linked
+# build.
+wheel.py-api = "cp310"
+
 [tool.scikit-build.sdist]
-exclude = ["**/*"]
-include = [
-    "/src/**/*.py",
-    "/src/**/*.c",
-    "/src/**/*.hpp",
-    "/src/**/*.h",
-    "/src/**/*.cpp",
-    "/src/**/*.cc",
-    "/LICENCE",
-    "/README.md",
-    "/pyproject.toml",
-    "/CMakeLists.txt"
+# Exclude-list, matching pylmcf/wnet/wnetdeconv. This used to be an allowlist
+# (`exclude = ["**/*"]` plus an `include` of /src/**), which current
+# scikit-build-core resolves in favour of the exclude: the resulting sdist held
+# only README/LICENCE/pyproject/CMakeLists and could not be built at all.
+exclude = [
+    ".github/",
+    ".gitignore",
+    ".pytest_cache/",
+    "tests/",
+    "tests_cpp/",
+    "tutorials/",
+    "publication/",
+    "runtime/",
+    "reinstall.sh",
+    "CLAUDE.md",
+    "**/__pycache__/",
 ]
