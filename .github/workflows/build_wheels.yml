@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - ci_wheels
-    tags:
-      - v*
+  # Called by publish.yml on a v* tag. The tag no longer triggers this workflow
+  # directly: it must go through publish.yml, so that the upload can depend on
+  # the test suite as well as on the wheels.
+  workflow_call:
 
 permissions:
   actions: read
   contents: read
-  id-token: write
 
 jobs:
   build_wheels:
@@ -109,43 +110,6 @@ jobs:
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
-
-  wait_for_tests:
-    # Cross-workflow gate: run_tests.yml also triggers on v* tags, but GitHub
-    # Actions has no direct dependency between workflows, so poll the API for
-    # the test run on this commit and mirror its conclusion. Fails (blocking
-    # upload_pypi) if the tests fail, never appear, or exceed the timeout.
-    name: Wait for test suite
-    if: github.repository_owner == 'michalsta' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    timeout-minutes: 350
-    steps:
-      - name: Wait for run_tests.yml to succeed on this commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -eu
-          while true; do
-            run="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/run_tests.yml/runs?head_sha=${GITHUB_SHA}&per_page=1" \
-                   --jq '.workflow_runs[0] // empty | "\(.status) \(.conclusion) \(.html_url)"')"
-            if [ -z "$run" ]; then
-              echo "No test workflow run found yet for ${GITHUB_SHA}; waiting..."
-            else
-              status="${run%% *}"
-              rest="${run#* }"
-              conclusion="${rest%% *}"
-              url="${rest#* }"
-              echo "Test run: status=${status} conclusion=${conclusion} ${url}"
-              if [ "${status}" = "completed" ]; then
-                if [ "${conclusion}" = "success" ]; then
-                  exit 0
-                fi
-                echo "Test workflow concluded with '${conclusion}'; refusing to publish." >&2
-                exit 1
-              fi
-            fi
-            sleep 60
-          done
 
   # One cp310-abi3 wheel is supposed to cover every CPython from 3.10 up, which
   # includes Pythons that did not exist when it was built. Nothing else checks
@@ -368,27 +332,3 @@ jobs:
         run: |
           python -m pip install pytest pandas numpy
           python -m pytest tests/ -q -m "not realdata"
-
-  upload_pypi:
-    needs: [build_wheels, build_sdist, test_sdist_pypy, test_sdist_musl,
-            test_sdist_freethreaded, test_wheel_newest, test_wheel_freethreaded,
-            wait_for_tests]
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
-    # if: github.event_name == 'release' && github.event.action == 'published'
-    # or, alternatively, upload to PyPI on every tag starting with 'v' (remove on: release above to use this)
-    if: github.repository_owner == 'michalsta' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          # unpacks all CIBW artifacts into dist/
-          pattern: cibw-*
-          path: dist
-          merge-multiple: true
-
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        # To test uploads to TestPyPI, uncomment the following:
-        # with:
-        #   repository-url: https://test.pypi.org/legacy/
