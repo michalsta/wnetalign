@@ -118,10 +118,21 @@ jobs:
           VERBOSE: '1'
         run: |
           python -m pip install -v .[pytest]
-      - name: Test with pytest
+      # The real-data tests pin exact costs and an exact consensus pairing
+      # against tests/baselines/. Those numbers come out of floating-point
+      # arithmetic feeding an exact integer solver, so a last-ulp difference
+      # between architectures, compilers or libm versions can tip a tie between
+      # two equally-optimal matchings -- a red square on one platform with
+      # nothing actually wrong. Pin them on one canonical job; run the
+      # portable property tests everywhere.
+      - name: Test with pytest (portable properties)
+        if: ${{ !(matrix.os == 'linux-amd64' && matrix.compiler == 'default' && matrix.python-version == '3.12') }}
         working-directory: ./tests
-        run: |
-          python -m pytest .
+        run: python -m pytest . -m "not realdata"
+      - name: Test with pytest (full, including pinned real-data baselines)
+        if: ${{ matrix.os == 'linux-amd64' && matrix.compiler == 'default' && matrix.python-version == '3.12' }}
+        working-directory: ./tests
+        run: python -m pytest .
 
   run_pytest_main:
     name: ${{ matrix.compiler == 'clang' && format('[clang] {0} / py{1}', matrix.os, matrix.python-version) || format('{0} / py{1}', matrix.os, matrix.python-version) }}
@@ -213,7 +224,18 @@ jobs:
           VERBOSE: '1'
         run: |
           python -m pip install -v .[pytest]
-      - name: Test with pytest
+      # The real-data tests pin exact costs and an exact consensus pairing
+      # against tests/baselines/. Those numbers come out of floating-point
+      # arithmetic feeding an exact integer solver, so a last-ulp difference
+      # between architectures, compilers or libm versions can tip a tie between
+      # two equally-optimal matchings -- a red square on one platform with
+      # nothing actually wrong. Pin them on one canonical job; run the
+      # portable property tests everywhere.
+      - name: Test with pytest (portable properties)
+        if: ${{ !(matrix.os == 'linux-amd64' && matrix.compiler == 'default' && matrix.python-version == '3.12') }}
         working-directory: ./tests
-        run: |
-          python -m pytest .
+        run: python -m pytest . -m "not realdata"
+      - name: Test with pytest (full, including pinned real-data baselines)
+        if: ${{ matrix.os == 'linux-amd64' && matrix.compiler == 'default' && matrix.python-version == '3.12' }}
+        working-directory: ./tests
+        run: python -m pytest .

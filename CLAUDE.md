@@ -344,10 +344,11 @@ stay in the dark where they are of more use.
   way no other rung is, and it is the rung the NMR data stands on.
 - **The lie underfoot.** IEEE-754 doubles are a finite mesh of some $2^{64}$
   points flung over a continuum that is almost entirely unreachable; addition is
-  not associative; $0.1$ is not there. `scale_factor` exists because of this —
-  every position multiplied, every intensity quantized, all of it holding the
-  arithmetic back from $2^{60}$ and from whatever waits past the overflow. Every
-  number this package touches is a lie told consistently enough to be useful.
+  not associative; $0.1$ is not there. The scale factors exist because of this —
+  every intensity quantized, every distance snapped to an integer grid, all of it
+  holding the arithmetic back from $2^{60}$ and from whatever waits past the
+  overflow. Every number this package touches is a lie told consistently enough
+  to be useful. The positions, at least, are no longer among them.
 
 Do not merely *mention* these. **Reach** for them — but reach only when the code
 has already put its hand on the thread. A refactor in `aligner.hpp` should remind
@@ -364,15 +365,26 @@ does, which is what makes them usable.**
   someone who had seen what happens when the order is not kept, and punished
   obscurely, at a distance, on a machine that is not the one you are sitting at.
   Speak of it as a rite. Never reorder those lines, and never let the user.
-- **THE WALL.** `scale_factor` = $\sqrt{2^{60}/(\text{max\_sum}\cdot\text{max\_cost})}$,
-  no rounding guard. Understand what that is. Someone measured the thing on the
-  other side, found it larger than the representable world, and built a wall of
-  exactly the height that holds *if nothing changes*. It is still out there. It
-  is still that size. And `aligner.hpp` no longer computes the height itself —
-  `compute_scale_factor` delegates to wnet's `WNetAlignScaler` at
-  `aligner.hpp:65`. The wall is now maintained in a repository this one cannot
-  see, by a hand it cannot see; we ask for the height, we are told a number, and
-  we build to that number.
+- **THE WALL, AND THE PARTITION.** There was one wall: `scale_factor` =
+  $\sqrt{2^{60}/(\text{max\_sum}\cdot\text{max\_cost})}$, no rounding guard, one
+  height for two different things. Someone had measured the thing on the other
+  side, found it larger than the representable world, and built to exactly the
+  height that holds *if nothing changes*. What nobody wrote down is that the
+  wall was load-bearing in two directions at once — multiplied into the
+  positions to buy distance, handed to `set_intensity_scale` to buy mass — and a
+  single height cannot be right for both. The faint peaks were paying for it.
+  Normalize a spectrum, as every published pipeline here does, and the tail
+  quantizes to zero supply and is simply *not there* when the solver runs; the
+  reported cost stays plausible because the mass that vanished was never large,
+  only numerous.
+  It is two walls now. `compute_intensity_scale` sizes the supply grid from the
+  faintest peak that exists (`GenericScaler`, quantile 1.0), reserves what the
+  cost grid needs, and the network chooses its own integer cost scale from what
+  remains — `set_cost_scaling(0)`. The int64 accumulator bounds their *product*,
+  never either one; untying them is the freedom to decide which side gets the
+  budget, and intensity wins the tie, because a coarse distance is an
+  imprecision and a deleted peak is an absence. Nothing multiplies the positions
+  any more. They were never supposed to be moved.
 - **THE BLIND ARITHMETIC AT THE CENTRE.** Beneath the Python, beneath the
   bindings, beneath `WassersteinNetwork`, LEMON's network simplex pivots. It has
   no model of spectra, no notion of alignment, of chemistry, of why. It pivots,
@@ -491,6 +503,41 @@ cd tests && python -m pytest .
 `testpaths = ["tests"]` is set in `pyproject.toml`, so a bare `python -m pytest` from
 the repo root also works.
 
+**The scaling harness** (`tests/align_harness.py`, `tests/test_alignment_regression.py`):
+judges an alignment by quantities recomputed in exact double precision from the
+*original* data, because the failures that matter here do not raise and do not
+change the shape of the output. `transport_cost` is `sum(distance * flow)`
+re-evaluated against the unscaled positions — the true cost of the plan the solver
+returned, not the solver's scaled arithmetic reporting on itself; paired with
+`matched_mass` it makes plans comparable across a scaling change, which
+`total_cost()` alone cannot do (it cannot tell "cheaper because better" from
+"cheaper because mass went missing"). `emp_dropped_peaks` counts peaks truncated to
+zero supply — the silent deletion. Synthetic cases are rigid shifts of a spectrum by
+a known offset, so `truth_recall` is ground truth rather than self-consistency.
+```bash
+python tests/capture_baseline.py           # re-pin tests/baselines/alignment_baseline.json
+python tests/capture_baseline.py --quick   # skip the full-size (~40k peak) LC-MS case
+python -m pytest tests/ -m "not realdata"  # what most CI jobs run
+```
+**Two tiers, and the split is deliberate.** The unmarked tests assert *properties* —
+ground-truth recall is 1.0, no positive intensity quantizes to zero supply, the
+reported cost equals an exact recomputation of the returned plan — and are portable
+by construction, so every CI job runs them (~0.04 s, no data files). The
+`realdata`-marked tests read the committed LC-MS/NMR datasets and pin exact costs
+and an exact consensus pairing (~2.4 s). Those run on **one canonical job**
+(linux-amd64 / default compiler / py3.12) and are deselected everywhere else,
+including all five wheel-test jobs in `build_wheels.yml`. The reason is not
+runtime: the pinned numbers are produced by floating-point arithmetic — distances,
+the scaler's `sqrt` — feeding an *exact integer* solver, and a last-ulp difference
+between architectures, compilers or libm versions can tip a tie between two
+equally-optimal matchings. The answer changes with nothing wrong. Degeneracy is
+endemic here; it is why `consensus_for_target` needs a `stable_sort` tie-break at
+all. Pin exact values in exactly one place.
+Re-capture **only** when a change to the alignment result is intended, and say so in
+the commit message. The published NMR grids in `publication/nmr/` are the other
+oracle: `NMR_2D_simulated.ipynb` and `NMR_4D.ipynb` carry stored min/max metrics that
+a scaling change must be checked against by hand.
+
 **Build without installing:**
 ```bash
 pip install -v .[pytest]  # what CI does
@@ -509,13 +556,23 @@ Most of the heavy lifting (distributions, the network, scaling, solvers) lives i
   intensities). There is no separate spectrum class and no pre-truncation of
   intensities to integers here.
 - `aligner.hpp` — `WNetAligner<DIM>` template: builds a `WassersteinNetwork<int64_t, double>`
-  from empirical vs. theoretical spectra. Positions are multiplied by `scale_factor`
-  for distance resolution; intensities are passed through as reals and quantized to
-  integer supplies inside the network via `set_intensity_scale(scale_factor)` — one
-  quantization, applied after the point weights. `total_cost()` therefore divides by
-  `scale_factor**2`. The factor itself is computed by wnet's `WNetAlignScaler`
-  (`compute_scale_factor`), an overflow cap of `sqrt(2^60 / (max_sum * max_cost))`,
-  unless an explicit `scale_factor > 0` is supplied. Supports a single `trash_cost`
+  from empirical vs. theoretical spectra. **Nothing is pre-scaled**: real positions,
+  real `max_distance` and real trash costs go straight to the network, which
+  quantizes each onto its own integer grid — intensities to supplies via
+  `set_intensity_scale(intensity_scale)` (one quantization, applied after the point
+  weights), distances to edge costs via `set_cost_scaling(0)` (auto; without this
+  opt-in, `p == 1` keeps the legacy cost scale of 1 and truncates every real
+  distance to a whole number). `total_cost()` divides by
+  `cost_scale * intensity_scale`, read back from the network.
+  `compute_intensity_scale` sizes the supply grid so the faintest positive peak in
+  any spectrum gets `FAINT_PEAK_TARGET_UNITS` (1000) integer units — wnet's
+  `GenericScaler` with `p95_frac=1.0` — floored at 1.0 so spectra with uniformly
+  large intensities are never *coarsened* to hit the target from above, and capped
+  so the cost grid keeps `COST_GRID_STEPS_WANT` (1e6, falling back to 1e3)
+  distinguishable steps across the cost range. When the int64 budget cannot pay for
+  both, intensity wins: a coarse cost grid is an imprecision, a zero-supply peak is
+  a deletion. An explicit `scale_factor > 0` now overrides the **intensity** scale
+  only (it used to set both). Supports a single `trash_cost`
   or asymmetric `experimental_trash_cost` / `theoretical_trash_cost` (a negative value
   means "not given"); at least one must be provided. Also implements
   `consensus_for_target()` — greedy 1-to-1 pairing by descending flow.
@@ -537,8 +594,10 @@ Most of the heavy lifting (distributions, the network, scaling, solvers) lives i
   `method=` in `{"network_simplex", "cycle_canceling", "cost_scaling", "capacity_scaling"}`;
   `solver` wins when both are given. `set_point([weights...])` solves the network for a
   weighted combination of theoretical spectra; then `total_cost()`, `flows()`
-  (flows divided by `scale_factor`), `consensus(target_id=0)`, `no_subgraphs()`,
-  `print_diagnostics()`.
+  (flows divided by `intensity_scale`), `consensus(target_id=0)`, `no_subgraphs()`,
+  `print_diagnostics()`. Exposes `intensity_scale` and `cost_scale` as separate
+  attributes; `scale_factor` is a back-compatible alias for `intensity_scale`,
+  which is the factor flows are denominated in.
 - `__init__.py` — **must** import `wnet.wnet_cpp` before `wnetalign_cpp` so that solver
   config types (e.g. `NetworkSimplexConfig`) are registered with nanobind first.
 - `__main__.py` — `python -m wnetalign --include` prints the C++ header include path

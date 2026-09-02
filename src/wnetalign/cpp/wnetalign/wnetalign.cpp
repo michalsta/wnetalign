@@ -44,6 +44,8 @@
         .def("set_point", &WNetAligner_##DIM::set_point) \
         .def("total_cost", &WNetAligner_##DIM::total_cost) \
         .def("scale_factor", &WNetAligner_##DIM::scale_factor) \
+        .def("intensity_scale", &WNetAligner_##DIM::intensity_scale) \
+        .def("cost_scale", &WNetAligner_##DIM::cost_scale) \
         .def("no_theoretical_spectra", &WNetAligner_##DIM::no_theoretical_spectra) \
         .def("flows_for_target", [](const WNetAligner_##DIM& self, size_t target_id) { \
             auto [emp, theo, flows] = self.flows_for_target(target_id); \

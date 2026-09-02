@@ -42,6 +42,26 @@ class WNetAligner:
         Min-cost flow algorithm as a string: ``"network_simplex"`` (default),
         ``"cycle_canceling"``, ``"cost_scaling"``, or ``"capacity_scaling"``.
         Ignored when ``solver`` is provided.
+    scale_factor : int or float, optional
+        Overrides the **intensity** scale: real intensities are multiplied by
+        it and truncated to integer supplies.  Leave it ``None`` (recommended)
+        to let the aligner size that grid from the faintest peak present.
+
+        This used to be a single tied factor that was *also* multiplied into
+        the positions to buy distance resolution.  It no longer touches the
+        positions at all — the network quantizes real distances onto its own
+        cost grid, sized against whatever int64 budget the intensity scale
+        leaves.  Code that passed a ``scale_factor`` to sharpen distances
+        should simply stop passing one.
+
+    Attributes
+    ----------
+    intensity_scale : float
+        The intensity grid actually used; flows are denominated in these units.
+    cost_scale : int
+        The distance/cost grid the network chose.
+    scale_factor : float
+        Back-compatible alias for ``intensity_scale``.
     """
 
     def __init__(
@@ -86,7 +106,17 @@ class WNetAligner:
             float(theoretical_trash_cost)  if theoretical_trash_cost  is not None else -1.0,
             solver,
         )
-        self.scale_factor = self._cpp.scale_factor()
+        #: Factor real intensities are multiplied by before truncation to
+        #: integer supplies.  Flows come back in these units.
+        self.intensity_scale = self._cpp.intensity_scale()
+        #: Integer grid the network chose for the real distances.  Independent
+        #: of the intensity scale: they share an int64 budget but not a value.
+        self.cost_scale = self._cpp.cost_scale()
+        #: Back-compatible alias for :attr:`intensity_scale`.  It used to be a
+        #: single factor applied to positions *and* intensities at once; the
+        #: two grids are chosen separately now, and this name follows the one
+        #: flows are denominated in.
+        self.scale_factor = self.intensity_scale
         self.point = None
 
     def set_point(self, point: Union[Sequence[float], np.ndarray]) -> None:
@@ -117,7 +147,13 @@ class WNetAligner:
             empirical_peak_idx, theoretical_peak_idx, flow = self._cpp.flows_for_target(
                 i
             )
-            result.append(_Flow(empirical_peak_idx, theoretical_peak_idx, flow / self.scale_factor))
+            result.append(
+                _Flow(
+                    empirical_peak_idx,
+                    theoretical_peak_idx,
+                    flow / self.intensity_scale,
+                )
+            )
         return result
 
     def consensus(self, target_id: int = 0):
@@ -143,6 +179,9 @@ class WNetAligner:
         print("No theoretical nodes:", self._cpp.count_theoretical_nodes())
         print("Matching density:", self._cpp.matching_density())
         print(
-            "Scale factor:", self.scale_factor, f" log10: {np.log10(self.scale_factor)}"
+            "Intensity scale:",
+            self.intensity_scale,
+            f" log10: {np.log10(self.intensity_scale)}",
         )
+        print("Cost scale:", self.cost_scale)
         print("Total cost:", self._cpp.total_cost())

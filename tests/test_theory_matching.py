@@ -36,7 +36,13 @@ def test_matching3():
     )
     wasserstein_network.set_point([1, 1])
     wasserstein_network.print_diagnostics()
-    assert math.isclose(wasserstein_network.total_cost(), 124.0)
+    # s3 sits beyond max_distance, so it is an isolated component.  Annihilating
+    # simple trash is priced over the whole network (wnet bae1bfa), so the 6
+    # unmatched empirical units and s3's 6 unfilled units annihilate against
+    # each other once: 4 (transport) + 10 * 6 = 64.  The previous 124 charged
+    # that excess twice, once per component -- an artefact of subgraph
+    # decomposition that the network-wide pricing removed.
+    assert math.isclose(wasserstein_network.total_cost(), 64.0)
 
 
 if __name__ == "__main__":
