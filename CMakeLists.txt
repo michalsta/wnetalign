@@ -125,8 +125,22 @@ if (NB_LINKED AND DEFINED SKBUILD_SABI_VERSION
 endif()
 
 
+# Locate pylmcf's headers WITHOUT importing it. `${Python_EXECUTABLE} -m pylmcf --include`
+# reads better, but -m makes runpy import the package first, and pylmcf/__init__.py
+# loads the compiled extension -- so a question about a directory turns into
+# a runtime ABI check on an unrelated module. That is not hypothetical: on
+# free-threaded Windows, pip installs a non-free-threaded
+# pylmcf wheel into the isolated build environment beside a free-threaded
+# nanobind backend, and the import dies with "this extension was built for the
+# platform ABI ... but the backend module serves ..._ft" -- failing the *build*
+# over a mismatch that has nothing to do with headers.
+#
+# find_spec() locates a top-level package without executing its __init__, and
+# the 'cpp' subdirectory is what pylmcf.__version__.include() returns
+# ((Path(__file__).parent / "cpp").resolve()); keep the two in step.
 execute_process(
-   COMMAND ${Python_EXECUTABLE} -m pylmcf --include
+   COMMAND ${Python_EXECUTABLE} -c
+           "import importlib.util as u, os, sys; s = u.find_spec('pylmcf'); sys.exit('pylmcf is not importable by this interpreter') if s is None or not s.origin else print(os.path.join(os.path.dirname(s.origin), 'cpp'))"
    OUTPUT_VARIABLE PYLMCF_INCLUDE_DIRS
    OUTPUT_STRIP_TRAILING_WHITESPACE
    RESULT_VARIABLE PYLMCF_INCLUDE_RESULT
@@ -135,8 +149,22 @@ if(NOT PYLMCF_INCLUDE_RESULT EQUAL 0)
     message(FATAL_ERROR "Failed to get include path from pylmcf (is it installed for ${Python_EXECUTABLE}?)")
 endif()
 
+# Locate wnet's headers WITHOUT importing it. `${Python_EXECUTABLE} -m wnet --include`
+# reads better, but -m makes runpy import the package first, and wnet/__init__.py
+# loads the compiled extension *and* runs the cross-package nanobind mode
+# check -- so a question about a directory turns into a runtime ABI check on
+# an unrelated module. That is not hypothetical: on free-threaded Windows, pip installs a non-free-threaded
+# wnet wheel into the isolated build environment beside a free-threaded
+# nanobind backend, and the import dies with "this extension was built for the
+# platform ABI ... but the backend module serves ..._ft" -- failing the *build*
+# over a mismatch that has nothing to do with headers.
+#
+# find_spec() locates a top-level package without executing its __init__, and
+# the 'cpp' subdirectory is what wnet/__main__.py's --include prints
+# (Path(__file__).parent / "cpp"); keep the two in step.
 execute_process(
-   COMMAND ${Python_EXECUTABLE} -m wnet --include
+   COMMAND ${Python_EXECUTABLE} -c
+           "import importlib.util as u, os, sys; s = u.find_spec('wnet'); sys.exit('wnet is not importable by this interpreter') if s is None or not s.origin else print(os.path.join(os.path.dirname(s.origin), 'cpp'))"
    OUTPUT_VARIABLE WNET_INCLUDE_DIRS
    OUTPUT_STRIP_TRAILING_WHITESPACE
    RESULT_VARIABLE WNET_INCLUDE_RESULT
