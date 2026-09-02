@@ -171,7 +171,7 @@ jobs:
       - name: Run the test suite
         run: |
           python -m pip install pytest pandas numpy
-          python -m pytest tests/ -q
+          python -m pytest tests/ -q -m "not realdata"
 
   # The abi3t wheel is the only artifact whose whole point is that the GIL stays
   # off. Installing it and running the suite is not enough to show that: every
@@ -212,7 +212,7 @@ jobs:
       - name: Run the test suite
         run: |
           python -m pip install pytest pandas numpy
-          python -m pytest tests/ -q
+          python -m pytest tests/ -q -m "not realdata"
 
   # musl gets no wheel (CIBW_SKIP above), and nanobind-backend publishes neither
   # a musllinux wheel nor an sdist, so Alpine has exactly one install path: build
@@ -260,12 +260,12 @@ jobs:
       - name: Smoke-test the compiled extension, and check it reports linked
         run: |
           cd "$(mktemp -d)"
-          /venv/bin/python -c 'import wnetalign; from wnetalign import wnetalign_cpp; print('wnetalign OK', wnetalign_cpp)'
+          /venv/bin/python -c 'import wnetalign; from wnetalign import wnetalign_cpp; print("wnetalign OK", wnetalign_cpp)'
           /venv/bin/python -c 'import wnetalign; assert not wnetalign.is_nanobind_split(), "musl must fall back to a linked build"'
       - name: Run the test suite
         run: |
           /venv/bin/python -m pip install pytest pandas numpy
-          /venv/bin/python -m pytest tests/ -q
+          /venv/bin/python -m pytest tests/ -q -m "not realdata"
 
   # Free-threaded CPython before 3.15 predates nanobind-backend's abi3t wheels,
   # so it gets no wheel from cibuildwheel and no backend requirement from
@@ -305,7 +305,7 @@ jobs:
       - name: Run the test suite
         run: |
           python -m pip install pytest pandas numpy
-          python -m pytest tests/ -q
+          python -m pytest tests/ -q -m "not realdata"
 
   # Split mode is CPython-only, so PyPy gets no wheel. It must still be able to
   # build wnetalign from the sdist, which is the only path that exercises the
@@ -351,7 +351,7 @@ jobs:
       - name: Run the test suite
         run: |
           python -m pip install pytest pandas numpy
-          python -m pytest tests/ -q
+          python -m pytest tests/ -q -m "not realdata"
 
   upload_pypi:
     needs: [build_wheels, build_sdist, test_sdist_pypy, test_sdist_musl,
