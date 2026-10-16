@@ -1,0 +1,4 @@
+# Standalone C++ suites, run by tests_cpp/run_all.sh (format documented in
+# .github/scripts/run_cpp_suites.sh).
+test_aligner    | tests_cpp/test_aligner.cpp    | |
+test_lcms_align | tests_cpp/test_lcms_align.cpp | | tutorials/lcms/data

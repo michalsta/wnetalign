@@ -48,6 +48,8 @@ jobs:
       tier: ${{ steps.pick.outputs.tier }}
       tests: ${{ steps.pick.outputs.tests }}
       sanitize: ${{ steps.pick.outputs.sanitize }}
+      valgrind: ${{ steps.pick.outputs.valgrind }}
+      has_valgrind: ${{ steps.pick.outputs.has_valgrind }}
     steps:
       - uses: actions/checkout@v5
       - id: pick
@@ -128,3 +130,344 @@ jobs:
         if: ${{ matrix.realdata }}
         working-directory: ./tests
         run: python -m pytest .
+
+  # Standalone C++ suites (tests_cpp/run_all.sh): every lane of
+  # .github/scripts/cpp_lane.sh, which holds the flags and the reasoning, so a
+  # lane reproduces locally with `cpp_lane.sh <lane> tests_cpp/run_all.sh`. Plain
+  # executables, no Python in the process, so this sits outside ci_matrix.py
+  # and its tiers: every lane runs on every push. gcc and clang wherever both
+  # implement the tool (gcc has no MSan; the strict UBSan checks and libc++
+  # hardening are clang's). All clang lanes use LLVM 22 from apt.llvm.org:
+  # Ubuntu links its libc++/libc++abi with -Bsymbolic-functions, which defeats
+  # ASan's interposition and reports a bogus alloc-dealloc-mismatch on every
+  # thrown exception (LLVM #59432), and one LLVM keeps the MSan-instrumented
+  # libc++ the same version as the compiler that instruments the suites.
+  tests_cpp:
+    name: "[tests_cpp] ${{ matrix.lane }}"
+    needs: select
+    runs-on: [self-hosted, wloczykij-amd64]
+    container: localhost:5000/ubuntu-ci:24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        lane:
+          - gcc-asan-ubsan
+          - clang-asan-ubsan
+          - gcc-hardened
+          - clang-hardened
+          - clang-libcxx-hardened
+          - clang-msan
+          - gcc-tsan
+          - clang-tsan
+          - gcc-valgrind
+          - clang-valgrind
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Check out wnet's headers at a pinned commit
+        # Released wnet (up to 1.5.0) still wraps a size_t in its pair
+        # iterator, which the strict clang lane rejects; a47f30b removes it.
+        # Pinned so a change to wnet main cannot change this run. Move to a
+        # release (pip, like pylmcf below) once one contains the fix.
+        uses: actions/checkout@v5
+        with:
+          repository: michalsta/wnet
+          ref: a47f30b633be77813f73622f7410eee1f1d952a4
+          path: .deps/wnet
+      - name: Install pylmcf's headers
+        # Header-only use: the suites compile pylmcf's C++ directly. The
+        # released version, as the Python lanes resolve it.
+        run: |
+          python -m venv /opt/ci-venv
+          /opt/ci-venv/bin/pip install --upgrade pip
+          /opt/ci-venv/bin/pip install pylmcf
+          echo "PYLMCF_INCLUDE=$(/opt/ci-venv/bin/python -m pylmcf --include)" >> "$GITHUB_ENV"
+          echo "WNET_INCLUDE=$GITHUB_WORKSPACE/.deps/wnet/src/wnet/cpp" >> "$GITHUB_ENV"
+      - name: Add apt.llvm.org
+        if: startsWith(matrix.lane, 'clang-')
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-22.list
+      - name: Install the lane's toolchain
+        run: |
+          PKGS=""
+          case "${{ matrix.lane }}" in
+            clang-*)
+              # llvm-22 carries llvm-symbolizer: without it clang's sanitizer
+              # runtimes print bare addresses. lld and the runtimes for the
+              # instrumented libc++ build.
+              PKGS="clang-22 libclang-rt-22-dev llvm-22 lld-22 libc++-22-dev libc++abi-22-dev cmake ninja-build xz-utils curl"
+              for s in ASAN MSAN UBSAN TSAN; do
+                echo "${s}_SYMBOLIZER_PATH=/usr/lib/llvm-22/bin/llvm-symbolizer" >> "$GITHUB_ENV"
+              done
+              echo "CXX=clang++-22" >> "$GITHUB_ENV" ;;
+          esac
+          case "${{ matrix.lane }}" in *-valgrind) PKGS="$PKGS valgrind" ;; esac
+          if [ -n "$PKGS" ]; then sudo apt-get update -q && sudo apt-get install -y $PKGS; fi
+      - name: Restore the MSan-instrumented libc++
+        if: matrix.lane == 'clang-msan'
+        id: msan-libcxx
+        uses: actions/cache@v4
+        with:
+          path: /opt/msan-libcxx
+          key: msan-libcxx-llvm22-${{ hashFiles('.github/scripts/build_msan_libcxx.sh') }}
+      - name: Build the MSan-instrumented libc++
+        if: matrix.lane == 'clang-msan' && steps.msan-libcxx.outputs.cache-hit != 'true'
+        run: sudo .github/scripts/build_msan_libcxx.sh clang++-22 /opt/msan-libcxx
+      - name: Build and run every C++ suite
+        env:
+          MSAN_LIBCXX: /opt/msan-libcxx
+        run: .github/scripts/cpp_lane.sh "${{ matrix.lane }}" tests_cpp/run_all.sh
+
+  sanitize:
+    name: "[sanitize] ${{ matrix.label }}"
+    needs: select
+    runs-on: [self-hosted, wloczykij-amd64]
+    container: localhost:5000/ubuntu-ci:24.04
+    strategy:
+      fail-fast: false
+      # Three lanes on a work branch (1-coverage over {gcc, clang+libstdc++,
+      # clang+libc++} x {asan+ubsan, hardened}), all six on main and on a tag.
+      # The flag sets and the reasoning behind each live in ci_matrix.py.
+      matrix: ${{ fromJson(needs.select.outputs.sanitize) }}
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Create isolated venv
+        run: |
+          # Ephemeral venv in the throwaway container layer (/opt) -- never on the
+          # shared /__t toolcache. Critical here: this job installs an
+          # ASan-instrumented, same-version build, which must NOT leak into the
+          # shared interpreter where downstream jobs/repos would import it
+          # without the ASan runtime preloaded.
+          VENV=/opt/ci-venv
+          rm -rf "$VENV"
+          python -m venv "$VENV"
+          echo "$VENV/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+      - name: Set up LLVM from apt.llvm.org
+        # LLVM project packages lack Ubuntu's -Bsymbolic-functions patch that
+        # breaks ASan interception of __cxa_rethrow_primary_exception (LLVM #59432).
+        # Also used to get libclang-rt-XX-dev for versions not in Ubuntu main repos.
+        if: matrix.use_llvm_apt
+        run: |
+          LLVM_VERSION="${{ matrix.llvm_apt_version }}"
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${LLVM_VERSION} main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-${LLVM_VERSION}.list
+          sudo apt-get update -q
+      - name: Install system packages
+        if: matrix.apt_extra != ''
+        run: sudo apt-get update -q && sudo apt-get install -y ${{ matrix.apt_extra }}
+      - name: Install Clang sanitizer runtime
+        # Installs the clang runtime (ASan/UBSan shared library) for LD_PRELOAD.
+        # Detects the installed clang version dynamically to avoid pinning a version number.
+        if: matrix.install_clang_rt
+        run: |
+          CLANG_VER=$(clang --version | grep -oP '(?<=clang version )\d+')
+          sudo apt-get install -y libclang-rt-${CLANG_VER}-dev
+      - name: Set up Clang as compiler
+        if: startsWith(matrix.cc, 'clang')
+        run: |
+          echo "CC=${{ matrix.cc }}" >> $GITHUB_ENV
+          echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
+          echo "CMAKE_ARGS=-DCMAKE_C_COMPILER=${{ matrix.cc }} -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}" >> $GITHUB_ENV
+      - name: Resolve linker flags
+        # Shared by the pylmcf and wnet builds below: both extensions have to be
+        # linked the same way, so the rpath fix-up lives in one place and lands
+        # in the environment rather than in one step's local shell.
+        env:
+          LINK_FLAGS: ${{ matrix.link_flags }}
+        run: |
+          if [[ "$LINK_FLAGS" == *"-shared-libasan"* ]]; then
+            CLANG_RT_DIR=$(${CC:-clang} -print-runtime-dir 2>/dev/null || true)
+            if [ -n "$CLANG_RT_DIR" ] && [ -d "$CLANG_RT_DIR" ]; then
+              LINK_FLAGS="$LINK_FLAGS -Wl,-rpath,${CLANG_RT_DIR}"
+            fi
+          fi
+          echo "WNET_LINK_FLAGS=${LINK_FLAGS}" >> $GITHUB_ENV
+      - name: Build pylmcf and wnet from source with this lane's toolchain
+        # wnet compiles pylmcf's headers in and the two extensions share
+        # nanobind type registrations at runtime, so they must be built the same
+        # way. A pylmcf wheel off PyPI is none of the things this lane needs: it
+        # is split mode (wnet's import-time check rejects the mismatch outright),
+        # it is uninstrumented, and in the hardened lanes it disagrees with wnet
+        # about the layout of every std:: container that crosses between them --
+        # _GLIBCXX_DEBUG and _LIBCPP_HARDENING_MODE change the ABI, silently.
+        # So build pylmcf from the sdist with this lane's exact compiler, build
+        # type, flags and nanobind mode. Same version the wheel would have been;
+        # the later `pip install .[pytest]` finds the requirement satisfied and
+        # leaves this build in place.
+        env:
+          VERBOSE: '1'
+          CXX_FLAGS: ${{ matrix.cxx_flags }}
+        run: |
+          LINK_ARGS=()
+          if [ -n "$WNET_LINK_FLAGS" ]; then
+            LINK_ARGS=(
+              --config-settings="cmake.define.CMAKE_SHARED_LINKER_FLAGS=${WNET_LINK_FLAGS}"
+              --config-settings="cmake.define.CMAKE_MODULE_LINKER_FLAGS=${WNET_LINK_FLAGS}"
+            )
+          fi
+          # wnet is built in the same way and for the same reasons: wnetalign
+          # instantiates wnet's network in its own extension and the two share
+          # nanobind type registrations, so all three must agree on compiler,
+          # flags, ABI-changing debug modes and nanobind mode.
+          python -m pip install -v --no-binary pylmcf,wnet pylmcf wnet \
+            --config-settings="cmake.build-type=${{ matrix.build_type }}" \
+            --config-settings="cmake.define.WNET_NB_LINKED=ON" \
+            --config-settings="cmake.define.CMAKE_CXX_FLAGS=${CXX_FLAGS}" \
+            "${LINK_ARGS[@]}"
+      - name: Install package
+        env:
+          VERBOSE: '1'
+          CXX_FLAGS: ${{ matrix.cxx_flags }}
+        run: |
+          LINK_ARGS=()
+          if [ -n "$WNET_LINK_FLAGS" ]; then
+            LINK_ARGS=(
+              --config-settings="cmake.define.CMAKE_SHARED_LINKER_FLAGS=${WNET_LINK_FLAGS}"
+              --config-settings="cmake.define.CMAKE_MODULE_LINKER_FLAGS=${WNET_LINK_FLAGS}"
+            )
+          fi
+          # WNET_NB_LINKED=ON forces the classic linked nanobind build. Split
+          # mode resolves a prebuilt backend module at import, and that backend
+          # is an uninstrumented release binary built against libstdc++ -- it
+          # matches neither the sanitizer runtime nor the libc++ leg of this
+          # matrix, and split mode requires frontend and backend to agree on
+          # compiler, C++ runtime and debug mode.
+          python -m pip install -v .[pytest] \
+            --config-settings="cmake.build-type=${{ matrix.build_type }}" \
+            --config-settings="cmake.define.WNET_NB_LINKED=ON" \
+            --config-settings="cmake.define.CMAKE_CXX_FLAGS=${CXX_FLAGS}" \
+            "${LINK_ARGS[@]}"
+      - name: Find sanitizer libraries for LD_PRELOAD
+        # For GCC: the driver does not reliably add libasan to DT_NEEDED for
+        # `-shared -fsanitize=address` builds, so preloading libasan.so is the
+        # easiest way to get __asan_* symbols resolved at import time.
+        # For Clang: without -shared-libasan, clang links the ASan/UBSan runtime
+        # statically into the .so, so no LD_PRELOAD is strictly required.
+        # However, if the clang runtime shared library IS available
+        # (libclang-rt-XX-dev installed), preloading it ensures ASan intercepts
+        # Python's allocations from startup. If not found, skip preloading and
+        # let the static runtime in the extension handle things.
+        # IMPORTANT: never preload GCC's libasan for a libc++-compiled extension
+        # -- it brings libstdc++ exception hooks into the process, which crash
+        # libc++ extensions when they throw C++ exceptions (ABI mismatch between
+        # libstdc++ and libc++ EH tables). Only enable preload_asan for matrix
+        # entries whose extension is built against the matching libstdc++/libc++.
+        if: matrix.preload_asan
+        env:
+          MATRIX_CC: ${{ matrix.cc }}
+        run: |
+          CC_BIN="$MATRIX_CC"
+          PRELOAD=""
+          if [[ "$CC_BIN" == gcc* ]] || [[ "$CC_BIN" == g++* ]]; then
+            # GCC libasan: when preloaded alone, ASan initializes before
+            # libstdc++ is mapped, so dlsym(RTLD_NEXT, "__cxa_throw") returns
+            # NULL and the first C++ throw CHECK-fails. Preload libstdc++
+            # FIRST so the C++ runtime is on the link map before libasan's
+            # interceptor init runs.
+            LIBSTDCXX=$($CC_BIN -print-file-name=libstdc++.so.6 2>/dev/null || true)
+            if [ ! -f "$LIBSTDCXX" ]; then
+              LIBSTDCXX=$(find /lib /usr/lib -name "libstdc++.so.6" 2>/dev/null | head -1)
+            fi
+            ASAN_LIB=$($CC_BIN -print-file-name=libasan.so 2>/dev/null || true)
+            if [ ! -f "$ASAN_LIB" ]; then
+              ASAN_LIB=$(find /usr/lib/gcc -name "libasan.so*" 2>/dev/null | head -1)
+            fi
+            if [ -f "$LIBSTDCXX" ] && [ -f "$ASAN_LIB" ]; then
+              PRELOAD="${LIBSTDCXX}:${ASAN_LIB}"
+              echo "Preloading (order matters, libstdc++ first): $PRELOAD"
+            else
+              echo "Missing libstdc++ ($LIBSTDCXX) or libasan ($ASAN_LIB); not preloading"
+            fi
+          else
+            ASAN_LIB=$($CC_BIN -print-file-name=libclang_rt.asan-x86_64.so 2>/dev/null || true)
+            if [ ! -f "$ASAN_LIB" ]; then
+              # compiler -print-file-name returned a bare name (library not in clang's
+              # search path); try the LLVM tree directly.
+              ASAN_LIB=$(find /usr/lib/llvm-* -name "libclang_rt.asan-x86_64.so" 2>/dev/null | head -1)
+            fi
+            if [ -n "$ASAN_LIB" ] && [ -f "$ASAN_LIB" ]; then
+              PRELOAD="$ASAN_LIB"
+              echo "Preloading clang ASan from: $ASAN_LIB"
+            else
+              echo "clang ASan shared library not found; relying on static runtime embedded in extension"
+            fi
+          fi
+          echo "WNET_ASAN_PRELOAD=${PRELOAD}" >> $GITHUB_ENV
+      - name: Test with pytest
+        working-directory: ./tests
+        env:
+          LD_PRELOAD: ${{ env.WNET_ASAN_PRELOAD }}
+          PYTHONMALLOC: ${{ matrix.pythonmalloc }}
+          ASAN_OPTIONS: ${{ matrix.asan_opts }}
+          UBSAN_OPTIONS: ${{ matrix.ubsan_opts }}
+        run: python -m pytest . -v -m "not realdata"
+      - name: Dump sanitizer logs
+        if: always() && matrix.dump_logs
+        run: |
+          echo "=== ASan logs ==="
+          cat /tmp/asan.* 2>/dev/null || echo "(no asan log files)"
+          echo "=== UBSan logs ==="
+          cat /tmp/ubsan.* 2>/dev/null || echo "(no ubsan log files)"
+
+  # The package's pytest suite under valgrind memcheck (.github/scripts/
+  # valgrind_pytest.sh): the ordinary, uninstrumented extension built with
+  # each compiler, interpreter and pytest-xdist workers traced, any report in
+  # any process fails the job. Tens of times slower than native, so Tier B
+  # (main, nightly, releases); the lanes come from ci_matrix.py.
+  valgrind:
+    name: "[${{ matrix.label }}]"
+    needs: select
+    if: needs.select.outputs.has_valgrind == 'true'
+    runs-on: [self-hosted, wloczykij-amd64]
+    container: localhost:5000/ubuntu-ci:24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.select.outputs.valgrind) }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Create isolated venv
+        run: |
+          VENV=/opt/ci-venv
+          rm -rf "$VENV"
+          python -m venv "$VENV"
+          echo "$VENV/bin" >> "$GITHUB_PATH"
+          echo "VIRTUAL_ENV=$VENV" >> "$GITHUB_ENV"
+      - name: Install valgrind and the compiler
+        run: sudo apt-get update -q && sudo apt-get install -y ${{ matrix.apt_extra }}
+      - name: Install package
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+          VERBOSE: '1'
+        # RelWithDebInfo: optimised like the wheels, with line tables so
+        # valgrind's reports point at source lines.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -v .[pytest] pytest-xdist \
+            --config-settings="cmake.build-type=RelWithDebInfo"
+      - name: Test with pytest under valgrind
+        working-directory: ./tests
+        run: >-
+          ../.github/scripts/valgrind_pytest.sh . -n 8 -m "not realdata" -p no:cacheprovider

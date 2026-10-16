@@ -601,6 +601,26 @@ there is exactly one of them**, in every tier; the workflow switches on
 cancels superseded branch runs but never a tag run, under *distinct* group names
 — `publish.yml` calls both, and a shared group would serialise them.
 
+### C++ checking: `tests_cpp`, `sanitize`, `valgrind`
+
+The standalone C++ suites (`tests_cpp/suites.txt`: the synthetic oracle suite `test_aligner.cpp` and the LC-MS data test `test_lcms_align.cpp`) run in the `tests_cpp` job on every
+push, under ten lanes defined once in `.github/scripts/cpp_lane.sh` (shared
+byte-identical with pylmcf and wnet; `cpp_lane.sh <lane> tests_cpp/run_all.sh` reproduces one
+locally): ASan+UBSan, the hardened libstdc++ mode (`_GLIBCXX_DEBUG`,
+FORTIFY=3, stack protector, CET, pattern init), TSan and valgrind memcheck,
+each under gcc and clang; strict UBSan (`integer`, `implicit-conversion`, ...),
+libc++ hardening + ASan and MSan (against an MSan-instrumented libc++ built by
+`build_msan_libcxx.sh`, cached) under clang. Clang lanes use LLVM 22 from
+apt.llvm.org. The strict lane forbids unsigned wraparound outside
+`.github/scripts/ubsan-system-headers.ignorelist`, so write reverse loops as
+`for (size_t i = n; i > 0;) { --i; ... }`, not `i-- > 0`. The suites compile against released pylmcf headers and a pinned wnet
+commit (see the job): released wnet up to 1.5.0 still wraps a `size_t` in its
+pair iterator, which the strict lane rejects. Move the pin to a release once
+one contains the fix.
+The `sanitize` job (lanes in `ci_matrix.py`) builds the extension (and pylmcf and wnet, from their sdists with the same flags) with
+ASan/UBSan or the hardened modes and runs pytest against it; the `valgrind`
+job runs pytest under memcheck (`.github/scripts/valgrind_pytest.sh`, Tier B).
+
 ## Architecture
 
 This is a Python/C++ hybrid package using `scikit-build-core` + `nanobind`. The C++ core is compiled into `wnetalign_cpp`, which is then wrapped by the Python layer.
