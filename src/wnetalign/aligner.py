@@ -28,6 +28,23 @@ _SOLVER_METHODS = {
 }
 
 
+#: Default ``repair_max_nodes`` for aligner-built NetworkSimplex configs.
+#: Warm dual repair stays cheap on the small connected components alignment
+#: usually decomposes into, but on a large component (dense spectra, or wide
+#: windows once components percolate into one giant one) a repair can cost
+#: tens of cold solves.  Measured (synthetic, 10-15 weight points, identical
+#: costs): 1-D, one 5k-node component: 33.9 s -> 1.2 s; 2-D LC-MS, 90k peaks,
+#: percolated: 347 s -> 16 s; 2-D, 40k peaks, 9k small components:
+#: 0.86 s -> 0.75 s.  Any threshold from 300 to 3000 gave the same results.
+REPAIR_MAX_NODES = 1000
+
+
+def _gate_large_component_repair(solver) -> None:
+    # Only configs the aligner builds itself; a caller's config is used as is.
+    if isinstance(solver, NetworkSimplex) and hasattr(solver, "repair_max_nodes"):
+        solver.repair_max_nodes = REPAIR_MAX_NODES
+
+
 class WNetAligner:
     """
     Aligns an empirical spectrum to one or more theoretical spectra using a Wasserstein network approach.
@@ -37,7 +54,10 @@ class WNetAligner:
     ----------
     solver : NetworkSimplex | CostScaling | CycleCanceling | CapacityScaling, optional
         Solver configuration object.  Takes precedence over ``method`` when both are given.
-        Defaults to ``NetworkSimplex()`` (warm restarts, BLOCK_SEARCH pivot).
+        Defaults to ``NetworkSimplex()`` (warm restarts, BLOCK_SEARCH pivot) with
+        ``repair_max_nodes = REPAIR_MAX_NODES``: connected components larger
+        than that restart cold instead of attempting a warm dual repair.  A
+        config passed in is used unchanged.
     method : str, optional
         Min-cost flow algorithm as a string: ``"network_simplex"`` (default),
         ``"cycle_canceling"``, ``"cost_scaling"``, or ``"capacity_scaling"``.
@@ -82,10 +102,12 @@ class WNetAligner:
 
         if solver is None and method is None:
             solver = NetworkSimplex()
+            _gate_large_component_repair(solver)
         elif solver is None:
             if method not in _SOLVER_METHODS:
                 raise ValueError(f"Unknown method {method!r}. Choose from: {list(_SOLVER_METHODS)}")
             solver = _SOLVER_METHODS[method]()
+            _gate_large_component_repair(solver)
 
         if not hasattr(empirical_spectrum, "vecdist"):
             raise TypeError("empirical_spectrum must be a Distribution/Spectrum")
@@ -117,6 +139,8 @@ class WNetAligner:
         #: two grids are chosen separately now, and this name follows the one
         #: flows are denominated in.
         self.scale_factor = self.intensity_scale
+        #: The solver configuration in use (after defaults were applied).
+        self.solver = solver
         self.point = None
 
     def set_point(self, point: Union[Sequence[float], np.ndarray]) -> None:

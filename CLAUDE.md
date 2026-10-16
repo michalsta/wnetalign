@@ -650,7 +650,12 @@ Most of the heavy lifting (distributions, the network, scaling, solvers) lives i
   class by `empirical_spectrum.positions.shape[0]` and passing each spectrum's
   `.vecdist`. Solver choice via `solver=NetworkSimplex()` (default) or the string
   `method=` in `{"network_simplex", "cycle_canceling", "cost_scaling", "capacity_scaling"}`;
-  `solver` wins when both are given. `set_point([weights...])` solves the network for a
+  `solver` wins when both are given. An aligner-built NetworkSimplex config gets
+  `repair_max_nodes = REPAIR_MAX_NODES` (1000): components larger than that restart
+  cold instead of attempting a warm dual repair, which on a large component can cost
+  tens of cold solves (1-D 5k-node component 34 s -> 1.2 s; percolated 2-D LC-MS
+  347 s -> 16 s; no loss on fragmented data). A caller's config is used unchanged;
+  `self.solver` holds the config in use. `set_point([weights...])` solves the network for a
   weighted combination of theoretical spectra; then `total_cost()`, `flows()`
   (flows divided by `intensity_scale`), `consensus(target_id=0)`, `no_subgraphs()`,
   `print_diagnostics()`. Exposes `intensity_scale` and `cost_scale` as separate
