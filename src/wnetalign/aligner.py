@@ -43,6 +43,13 @@ def _gate_large_component_repair(solver) -> None:
     # Only configs the aligner builds itself; a caller's config is used as is.
     if isinstance(solver, NetworkSimplex) and hasattr(solver, "repair_max_nodes"):
         solver.repair_max_nodes = REPAIR_MAX_NODES
+    # Alignment optima are mostly matched, so wnet's default crash start from
+    # the all-trash flow starts far from them: measured on x86-64-v3 the first
+    # solve of the published LC-MS workload is 14-20% slower with it (2-D NMR
+    # 10% faster).  Keep LEMON's artificial start for aligner-built configs.
+    if isinstance(solver, NetworkSimplex) and hasattr(solver, "start"):
+        from wnet.wnet_cpp import StartMode
+        solver.start = StartMode.Artificial
 
 
 class WNetAligner:
@@ -56,7 +63,9 @@ class WNetAligner:
         Solver configuration object.  Takes precedence over ``method`` when both are given.
         Defaults to ``NetworkSimplex()`` (warm restarts, BLOCK_SEARCH pivot) with
         ``repair_max_nodes = REPAIR_MAX_NODES``: connected components larger
-        than that restart cold instead of attempting a warm dual repair.  A
+        than that restart cold instead of attempting a warm dual repair; cold
+        starts use LEMON's artificial basis (``StartMode.Artificial``), which
+        is faster than wnet's default trash start on alignment problems.  A
         config passed in is used unchanged.
     method : str, optional
         Min-cost flow algorithm as a string: ``"network_simplex"`` (default),

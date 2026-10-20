@@ -32,6 +32,7 @@ def test_default_config_gates_large_components():
 def test_caller_config_is_used_unchanged():
     emp, theos = dense_1d(50)
     cfg = NetworkSimplex()
+    cfg.repair_max_nodes = -1
     a = WNetAligner(emp, theos, DistanceMetric.L1, 0.03, 0.03, solver=cfg)
     assert a.solver.repair_max_nodes == -1
 
@@ -47,3 +48,12 @@ def test_gated_alignment_matches_cold_restarts():
         gated.set_point(w)
         cold.set_point(w)
         assert gated.total_cost() == pytest.approx(cold.total_cost(), rel=1e-12)
+
+
+def test_default_config_keeps_artificial_start():
+    wnet_cpp = pytest.importorskip("wnet.wnet_cpp")
+    if not hasattr(wnet_cpp, "StartMode"):
+        pytest.skip("wnet without StartMode")
+    emp, theos = dense_1d(50)
+    a = WNetAligner(emp, theos, DistanceMetric.L1, 0.03, 0.03)
+    assert a.solver.start == wnet_cpp.StartMode.Artificial
