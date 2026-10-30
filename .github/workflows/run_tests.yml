@@ -168,23 +168,26 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
-      - name: Check out wnet's headers at a pinned commit
-        # Released wnet (up to 1.5.0) still wraps a size_t in its pair
-        # iterator, which the strict clang lane rejects; a47f30b removes it.
-        # Pinned so a change to wnet main cannot change this run. Move to a
-        # release (pip, like pylmcf below) once one contains the fix.
+      - name: Resolve the wnet revision wnetalign declares
+        # The pinned git revision between releases, else the release tag of the
+        # lowest allowed version. Released wnet up to 1.5.0 still wraps a size_t
+        # in its pair iterator, which the strict clang lane rejects (a47f30b
+        # removes it), so a version range here must start above 1.5.0.
+        id: pins
+        run: echo "wnet=$(python .github/scripts/pinned_requirement.py wnet --ref)" >> "$GITHUB_OUTPUT"
+      - name: Check out wnet's headers at that revision
         uses: actions/checkout@v5
         with:
           repository: michalsta/wnet
-          ref: a47f30b633be77813f73622f7410eee1f1d952a4
+          ref: ${{ steps.pins.outputs.wnet }}
           path: .deps/wnet
       - name: Install pylmcf's headers
         # Header-only use: the suites compile pylmcf's C++ directly. The
-        # released version, as the Python lanes resolve it.
+        # version wnetalign declares, as the Python lanes resolve it.
         run: |
           python -m venv /opt/ci-venv
           /opt/ci-venv/bin/pip install --upgrade pip
-          /opt/ci-venv/bin/pip install pylmcf
+          /opt/ci-venv/bin/pip install "$(python .github/scripts/pinned_requirement.py pylmcf)"
           echo "PYLMCF_INCLUDE=$(/opt/ci-venv/bin/python -m pylmcf --include)" >> "$GITHUB_ENV"
           echo "WNET_INCLUDE=$GITHUB_WORKSPACE/.deps/wnet/src/wnet/cpp" >> "$GITHUB_ENV"
       - name: Add apt.llvm.org
@@ -307,10 +310,11 @@ jobs:
         # it is uninstrumented, and in the hardened lanes it disagrees with wnet
         # about the layout of every std:: container that crosses between them --
         # _GLIBCXX_DEBUG and _LIBCPP_HARDENING_MODE change the ABI, silently.
-        # So build pylmcf from the sdist with this lane's exact compiler, build
-        # type, flags and nanobind mode. Same version the wheel would have been;
-        # the later `pip install .[pytest]` finds the requirement satisfied and
-        # leaves this build in place.
+        # So build pylmcf from source with this lane's exact compiler, build
+        # type, flags and nanobind mode, from the requirement wnetalign declares
+        # (a version range, or a pinned git revision between releases); the
+        # later `pip install .[pytest]` finds it satisfied and leaves this build
+        # in place.
         env:
           VERBOSE: '1'
           CXX_FLAGS: ${{ matrix.cxx_flags }}
@@ -326,7 +330,9 @@ jobs:
           # instantiates wnet's network in its own extension and the two share
           # nanobind type registrations, so all three must agree on compiler,
           # flags, ABI-changing debug modes and nanobind mode.
-          python -m pip install -v --no-binary pylmcf,wnet pylmcf wnet \
+          python -m pip install -v --no-binary pylmcf,wnet \
+            "$(python .github/scripts/pinned_requirement.py pylmcf)" \
+            "$(python .github/scripts/pinned_requirement.py wnet)" \
             --config-settings="cmake.build-type=${{ matrix.build_type }}" \
             --config-settings="cmake.define.WNET_NB_LINKED=ON" \
             --config-settings="cmake.define.CMAKE_CXX_FLAGS=${CXX_FLAGS}" \

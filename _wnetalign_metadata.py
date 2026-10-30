@@ -56,7 +56,7 @@ __all__ = ["dynamic_metadata", "dynamic_wheel", "is_musl", "is_win32"]
 # require 'nanobind-backend>=X.Y' at runtime"); keep the two in step.
 BACKEND_REQUIREMENT = "nanobind-backend>=1.0"
 
-BASE_DEPENDENCIES = ["pylmcf>=1.2.1", "wnet>=1.3.0", "numpy"]
+BASE_DEPENDENCIES = ["pylmcf @ git+https://github.com/michalsta/pylmcf@8b10efc45bb25884b00ab1b468a310521b2bda3d", "wnet @ git+https://github.com/michalsta/wnet@9a2642d1c8a2adeab5150424712ce482e7f1001b", "numpy"]
 
 
 def is_musl() -> bool:
