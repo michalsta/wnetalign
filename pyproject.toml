@@ -10,7 +10,7 @@
 # spec, which older backends do not read. They would not fail -- they would
 # ignore it, leaving `dynamic = ["dependencies"]` unresolved and shipping a
 # wheel that declares no dependencies at all.
-requires = ["scikit-build-core>=1.0", "nanobind>=3.0.1", "pylmcf @ git+https://github.com/michalsta/pylmcf@8b10efc45bb25884b00ab1b468a310521b2bda3d", "wnet @ git+https://github.com/michalsta/wnet@9a2642d1c8a2adeab5150424712ce482e7f1001b"]
+requires = ["scikit-build-core>=1.0", "nanobind>=3.0.1", "pylmcf @ git+https://github.com/michalsta/pylmcf@2b7f93bccd7493330984da8cad1856b82ceed910", "wnet @ git+https://github.com/michalsta/wnet@de4c61eca6f1c3ed3898e4d8f203d3578a942546"]
 build-backend = "scikit_build_core.build"
 
 [project]
